@@ -648,7 +648,7 @@ install_mcp_server() {
         log_error "Virtual environment was created but pip is missing at $MCP_SERVER_DIR/.venv/bin/pip"
         exit 1
     fi
-    "$MCP_SERVER_DIR/.venv/bin/pip" install --quiet -r requirements.txt
+    "$MCP_SERVER_DIR/.venv/bin/pip" install --quiet -e .
 
     # Get Tailscale IP for binding
     TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "127.0.0.1")
