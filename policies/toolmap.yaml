@@ -465,8 +465,36 @@ read_operations:
         required: false
         default: 100
 
+  # --- System Monitoring ---
+
+  # Weekly statistics
+  get_weekly_stats:
+    logical_name: get_weekly_stats
+    mcp_tool: get_wazuh_weekly_stats
+    description: "Wazuh weekly statistics summary"
+    required: false
+    parameters: []
+
+  # Remoted daemon statistics
+  get_remoted_stats:
+    logical_name: get_remoted_stats
+    mcp_tool: get_wazuh_remoted_stats
+    description: "Wazuh remoted daemon statistics (agent connections, messages)"
+    required: false
+    parameters: []
+
+  # Log collector statistics
+  get_log_collector_stats:
+    logical_name: get_log_collector_stats
+    mcp_tool: get_wazuh_log_collector_stats
+    description: "Wazuh log collector daemon statistics"
+    required: false
+    parameters: []
+
 # =============================================================================
-# ACTION OPERATIONS (Disabled — MCP Server does not yet support action tools)
+# ACTION OPERATIONS (Disabled by default — require human approval to enable)
+# MCP Server supports 19 action tools: 9 actions, 5 verification, 5 rollback.
+# Verification and rollback tools are referenced in each action's config below.
 # =============================================================================
 action_operations:
   block_ip:

@@ -417,6 +417,118 @@ async function getMcpAuthToken() {
 }
 
 // =============================================================================
+// MCP SESSION STATE
+// =============================================================================
+
+// Tracks the MCP session ID returned by the server (reused across tool calls)
+let mcpSessionId = null;
+
+// Whether we've completed the MCP initialize handshake for the current session
+let mcpSessionInitialized = false;
+
+// MCP protocol version to negotiate with the server
+const MCP_PROTOCOL_VERSION = "2025-03-26";
+
+/**
+ * Perform the MCP initialize handshake (required by MCP spec before tools/call).
+ * Sends initialize request, captures session ID, then sends notifications/initialized.
+ * No-op if already initialized for the current session or in legacy-rest mode.
+ */
+async function ensureMcpSession() {
+  if (config.mcpAuthMode === "legacy-rest") return;
+  if (mcpSessionInitialized && mcpSessionId) return;
+  if (!config.mcpUrl) return;
+
+  const authToken = await getMcpAuthToken();
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), config.mcpTimeoutMs || 30000);
+
+    // Step 1: Send "initialize" request
+    const initResponse = await fetch(`${config.mcpUrl}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+        ...(authToken && { Authorization: `Bearer ${authToken}` }),
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "init-1",
+        method: "initialize",
+        params: {
+          protocolVersion: MCP_PROTOCOL_VERSION,
+          capabilities: {},
+          clientInfo: { name: "wazuh-autopilot", version: "1.0.0" },
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    // Capture session ID from response header
+    const sessionId = initResponse.headers.get("mcp-session-id");
+    if (sessionId) {
+      mcpSessionId = sessionId;
+    }
+
+    if (!initResponse.ok) {
+      log("warn", "mcp", "MCP initialize failed, will retry on next call", { status: initResponse.status });
+      await initResponse.text().catch(() => "");
+      return;
+    }
+
+    const initData = await initResponse.json();
+    if (initData.jsonrpc === "2.0" && initData.error) {
+      log("warn", "mcp", "MCP initialize returned error", { error: initData.error.message });
+      return;
+    }
+
+    log("info", "mcp", "MCP session initialized", {
+      session_id: mcpSessionId,
+      server: initData.result?.serverInfo?.name,
+      protocol: initData.result?.protocolVersion,
+    });
+
+    // Step 2: Send "notifications/initialized" (no id — it's a notification, no response expected)
+    const controller2 = new AbortController();
+    const timeoutId2 = setTimeout(() => controller2.abort(), 5000);
+
+    await fetch(`${config.mcpUrl}/mcp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+        ...(mcpSessionId && { "MCP-Session-Id": mcpSessionId }),
+        ...(authToken && { Authorization: `Bearer ${authToken}` }),
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+      }),
+      signal: controller2.signal,
+    });
+
+    clearTimeout(timeoutId2);
+
+    mcpSessionInitialized = true;
+  } catch (err) {
+    log("warn", "mcp", "MCP session init error, tool calls will proceed without session", { error: err.message });
+  }
+}
+
+/**
+ * Invalidate the current MCP session (e.g., on 404 "session not found").
+ * Next tool call will re-initialize.
+ */
+function invalidateMcpSession() {
+  mcpSessionId = null;
+  mcpSessionInitialized = false;
+}
+
+// =============================================================================
 // IP ENRICHMENT
 // =============================================================================
 
@@ -1807,6 +1919,9 @@ async function callMcpTool(toolName, params, correlationId) {
     throw new Error("MCP_URL not configured");
   }
 
+  // Ensure MCP session is initialized before calling tools
+  await ensureMcpSession();
+
   // Check if tool is enabled
   if (!isToolEnabled(toolName)) {
     incrementMetric("errors_total", { component: "mcp" });
@@ -1873,6 +1988,8 @@ async function callMcpTool(toolName, params, correlationId) {
           "Content-Type": "application/json",
           ...(authToken && { Authorization: `Bearer ${authToken}` }),
           ...(correlationId && { "X-Correlation-ID": correlationId }),
+          ...(config.mcpAuthMode !== "legacy-rest" && { "MCP-Protocol-Version": MCP_PROTOCOL_VERSION }),
+          ...(mcpSessionId && { "MCP-Session-Id": mcpSessionId }),
         },
         body: fetchBody,
         signal: controller.signal,
@@ -1880,12 +1997,30 @@ async function callMcpTool(toolName, params, correlationId) {
 
       clearTimeout(timeoutId);
 
+      // Capture/update session ID from response header
+      const respSessionId = response.headers.get("mcp-session-id");
+      if (respSessionId) {
+        mcpSessionId = respSessionId;
+      }
+
       // Handle 401: invalidate JWT cache and retry
       if (response.status === 401 && config.mcpAuthMode !== "legacy-rest") {
         mcpJwtCache = { token: null, expiresAt: 0 };
+        invalidateMcpSession();
         if (attempt < config.mcpMaxRetries) {
           await response.text().catch(() => "");
           lastError = new Error("MCP auth expired (401)");
+          continue;
+        }
+      }
+
+      // Handle 404: session expired, reinitialize and retry
+      if (response.status === 404 && config.mcpAuthMode !== "legacy-rest") {
+        invalidateMcpSession();
+        if (attempt < config.mcpMaxRetries) {
+          await response.text().catch(() => "");
+          await ensureMcpSession();
+          lastError = new Error("MCP session expired (404)");
           continue;
         }
       }
@@ -3419,6 +3554,8 @@ module.exports = {
   // MCP
   callMcpTool,
   getMcpAuthToken,
+  ensureMcpSession,
+  invalidateMcpSession,
   loadToolmap,
   resolveMcpTool,
   isToolEnabled,

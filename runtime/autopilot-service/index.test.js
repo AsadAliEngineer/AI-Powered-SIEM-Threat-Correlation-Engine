@@ -46,6 +46,8 @@ const {
   indexCaseEntities,
   markEntityFalsePositive,
   getMcpAuthToken,
+  ensureMcpSession,
+  invalidateMcpSession,
 } = require("./index.js");
 
 describe("Evidence Pack Management", () => {
@@ -996,6 +998,36 @@ describe("getMcpAuthToken", () => {
     const token = await getMcpAuthToken();
     // In test env, mcpAuth is not set, so should return null
     assert.strictEqual(token, null);
+  });
+});
+
+// =============================================================================
+// MCP Session Management
+// =============================================================================
+
+describe("MCP Session Management", () => {
+  it("ensureMcpSession is a no-op when MCP_URL is not configured", async () => {
+    // In test env, config.mcpUrl is empty, so ensureMcpSession should silently return
+    await ensureMcpSession();
+    // No error thrown = pass
+  });
+
+  it("invalidateMcpSession resets session state without error", () => {
+    invalidateMcpSession();
+    // Should not throw; resets internal state
+  });
+
+  it("ensureMcpSession can be called multiple times safely", async () => {
+    await ensureMcpSession();
+    await ensureMcpSession();
+    await ensureMcpSession();
+    // Idempotent — no error
+  });
+
+  it("invalidateMcpSession followed by ensureMcpSession is safe", async () => {
+    invalidateMcpSession();
+    await ensureMcpSession();
+    // Should not throw
   });
 });
 
