@@ -940,7 +940,13 @@ async function updateCase(caseId, updates) {
       };
       const webhookPath = statusWebhooks[updates.status];
       if (webhookPath) {
+        const statusMessages = {
+          triaged: `Correlate case ${caseId} (${evidencePack.severity} severity). Search for related alerts, identify attack patterns, and update case status to "correlated" when complete.`,
+          correlated: `Investigate case ${caseId} (${evidencePack.severity} severity). Perform deep analysis using MCP tools: check agent health, search security events, analyze threat indicators. Update case status to "investigated" when complete.`,
+          investigated: `Plan response for case ${caseId} (${evidencePack.severity} severity). Review investigation findings and create a response plan with recommended actions. Submit the plan for approval.`,
+        };
         dispatchToGateway(webhookPath, {
+          message: statusMessages[updates.status] || `Process case ${caseId} — status changed to ${updates.status}.`,
           case_id: caseId,
           status: updates.status,
           severity: evidencePack.severity,
@@ -1238,6 +1244,7 @@ function createResponsePlan(planData) {
 
   // Dispatch to policy-guard agent for supplementary analysis
   dispatchToGateway("/webhook/policy-check", {
+    message: `Review response plan ${planId} for case ${planData.case_id}. Risk level: ${plan.risk_level}, ${plan.actions.length} action(s) proposed. Validate actions against security policies and approve or flag concerns.`,
     plan_id: planId,
     case_id: planData.case_id,
     risk_level: plan.risk_level,
@@ -2928,6 +2935,7 @@ function createServer() {
 
           // Dispatch to triage agent via OpenClaw gateway
           dispatchToGateway("/webhook/wazuh-alert", {
+            message: `Triage new ${severity}-severity alert: ${caseData.title}. Case ${caseId} with ${entities.length} entities extracted. Analyze the alert, assess threat level, and update case status to "triaged" when complete.`,
             case_id: caseId,
             severity,
             title: caseData.title,
