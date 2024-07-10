@@ -286,7 +286,7 @@ AI-Powered-SIEM-Threat-Correlation-Engine/
 ### 1. Clone
 
 ```powershell
-git clone https://github.com/AsadAliEng/AI-Powered-SIEM-Threat-Correlation-Engine.git
+git clone https://github.com/AsadAliEngineer/AI-Powered-SIEM-Threat-Correlation-Engine.git
 Set-Location AI-Powered-SIEM-Threat-Correlation-Engine
 ```
 
@@ -459,8 +459,8 @@ Please use synthetic, sanitized data in issues, tests, screenshots, and pull req
 
 <div align="center">
 
-<a href="https://github.com/AsadAliEng">
-  <img src="https://github.com/AsadAliEng.png?size=160" width="140" alt="Asad Ali GitHub profile">
+<a href="https://github.com/AsadAliEngineer">
+  <img src="https://github.com/AsadAliEngineer.png?size=160" width="140" alt="Asad Ali GitHub profile">
 </a>
 
 ### Asad Ali
@@ -468,19 +468,19 @@ Please use synthetic, sanitized data in issues, tests, screenshots, and pull req
 **Developer · Repository Maintainer**
 
 <p>
-  <a href="https://github.com/AsadAliEng">
-    <img src="https://img.shields.io/badge/GitHub-AsadAliEng-181717?style=for-the-badge&logo=github" alt="GitHub profile">
+  <a href="https://github.com/AsadAliEngineer">
+    <img src="https://img.shields.io/badge/GitHub-AsadAliEngineer-181717?style=for-the-badge&logo=github" alt="GitHub profile">
   </a>
-  <a href="mailto:asadali.cryptoeng@gmail.com">
-    <img src="https://img.shields.io/badge/Email-asadali.cryptoeng%40gmail.com-EA4335?style=for-the-badge&logo=gmail&logoColor=white" alt="Email Asad Ali">
+  <a href="mailto:asadalieng1107@gmail.com">
+    <img src="https://img.shields.io/badge/Email-asadalieng1107%40gmail.com-EA4335?style=for-the-badge&logo=gmail&logoColor=white" alt="Email Asad Ali">
   </a>
 </p>
 
 | Detail | Information |
 |---|---|
 | 👤 **Name** | Asad Ali |
-| 💻 **GitHub** | [@AsadAliEng](https://github.com/AsadAliEng) |
-| 📧 **Email** | [asadali.cryptoeng@gmail.com](mailto:asadali.cryptoeng@gmail.com) |
+| 💻 **GitHub** | [@AsadAliEngineer](https://github.com/AsadAliEngineer) |
+| 📧 **Email** | [asadalieng1107@gmail.com](mailto:asadalieng1107@gmail.com) |
 
 <sub>Open to cybersecurity engineering, AI safety, and defensive automation collaboration.</sub>
 
