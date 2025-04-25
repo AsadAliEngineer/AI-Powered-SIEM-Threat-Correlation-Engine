@@ -1205,6 +1205,14 @@ function createResponsePlan(planData) {
       throw new Error(`Invalid actions: ${validationErrors.join("; ")}`);
     }
 
+    // Policy enforcement: check time window for response planning
+    const twResult = policyCheckTimeWindow("response_planning");
+    if (!twResult.allowed) {
+      incrementMetric("policy_denies_total", { reason: "time_window_denied", action: "response_planning" });
+      log("warn", "policy", "Response planning denied by time window", { reason: twResult.reason });
+      throw new Error(`Time window denied: ${twResult.reason}`);
+    }
+
     // Policy enforcement: check each action against allowlist
     for (const action of planData.actions) {
       const policyResult = policyCheckAction(action.type, planData.confidence || 0);
@@ -1483,6 +1491,19 @@ async function executePlan(planId, executorId) {
     actions_count: plan.actions.length,
   });
 
+  // Policy enforcement: check time window for action execution
+  const twExecResult = policyCheckTimeWindow("action_execution");
+  if (!twExecResult.allowed) {
+    incrementMetric("policy_denies_total", { reason: "time_window_denied", action: "action_execution" });
+    log("warn", "policy", "Execution denied by time window", { plan_id: planId, reason: twExecResult.reason });
+    plan.state = PLAN_STATES.FAILED;
+    plan.updated_at = new Date().toISOString();
+    plan.execution_result = { success: false, reason: twExecResult.reason };
+    executingPlans.delete(planId);
+    incrementMetric("executions_failed_total");
+    return plan;
+  }
+
   // Execute actions
   const results = [];
   let allSuccess = true;
@@ -1495,9 +1516,50 @@ async function executePlan(planId, executorId) {
           throw new Error("Action missing required fields: type, target");
         }
 
+        // Policy enforcement: idempotency check
+        const idempResult = policyCheckIdempotency(action.type, action.target);
+        if (!idempResult.allowed) {
+          incrementMetric("policy_denies_total", { reason: "duplicate_action", action: action.type });
+          log("warn", "policy", "Action denied by idempotency check", {
+            plan_id: planId, action_type: action.type, target: action.target, reason: idempResult.reason,
+          });
+          results.push({
+            action_type: action.type,
+            target: action.target,
+            status: "denied",
+            reason: idempResult.reason,
+            timestamp: new Date().toISOString(),
+          });
+          continue;
+        }
+
+        // Policy enforcement: rate limit check
+        const rlResult = policyCheckActionRateLimit(action.type);
+        if (!rlResult.allowed) {
+          const rlReason = rlResult.reason.includes("global") ? "global_rate_limited" : "action_rate_limited";
+          incrementMetric("policy_denies_total", { reason: rlReason, action: action.type });
+          log("warn", "policy", "Action denied by rate limit", {
+            plan_id: planId, action_type: action.type, reason: rlResult.reason,
+          });
+          results.push({
+            action_type: action.type,
+            target: action.target,
+            status: "denied",
+            reason: rlResult.reason,
+            timestamp: new Date().toISOString(),
+          });
+          continue;
+        }
+
         // Call MCP tool for the action
         const correlationId = `${planId}-${action.type}-${Date.now()}`;
         const mcpResult = await callMcpTool(action.type, action.params || {}, correlationId);
+
+        // Record successful execution for rate limiting and dedup tracking
+        if (mcpResult.success) {
+          recordActionExecution(action.type);
+          recordActionForDedup(action.type, action.target);
+        }
 
         results.push({
           action_type: action.type,
@@ -1529,11 +1591,13 @@ async function executePlan(planId, executorId) {
     }
 
     // Update plan with results
+    const actionsDenied = results.filter((r) => r.status === "denied").length;
     plan.execution_result = {
       success: allSuccess,
       actions_total: plan.actions.length,
       actions_success: results.filter((r) => r.status === "success").length,
-      actions_failed: results.filter((r) => r.status !== "success").length,
+      actions_denied: actionsDenied,
+      actions_failed: results.filter((r) => r.status === "failed" || r.status === "error").length,
       results,
     };
     plan.state = allSuccess ? PLAN_STATES.COMPLETED : PLAN_STATES.FAILED;
@@ -1752,6 +1816,24 @@ async function loadToolmap() {
 
 let policyConfig = null;
 
+// Action rate limit state (policy-driven, per-action + global counters)
+const MAX_DEDUP_ENTRIES = 10000;
+const actionRateLimitState = {
+  perAction: new Map(),
+  global: { hourly: { count: 0, resetTime: 0 }, daily: { count: 0, resetTime: 0 } },
+};
+const actionDeduplicationState = new Map();
+
+function resetActionRateLimitState() {
+  actionRateLimitState.perAction.clear();
+  actionRateLimitState.global.hourly = { count: 0, resetTime: 0 };
+  actionRateLimitState.global.daily = { count: 0, resetTime: 0 };
+}
+
+function resetDeduplicationState() {
+  actionDeduplicationState.clear();
+}
+
 async function loadPolicyConfig(overrideConfigDir) {
   const policyPath = path.join(overrideConfigDir || config.configDir, "policies", "policy.yaml");
   try {
@@ -1926,6 +2008,206 @@ async function policyCheckEvidence(planActions, caseId) {
   }
 
   return { sufficient: true, reason: `Evidence sufficient (${evidenceCount} items)` };
+}
+
+/**
+ * Check if the current time is within an allowed window for the given operation.
+ * Returns { allowed: boolean, reason: string }
+ */
+function policyCheckTimeWindow(operationType) {
+  if (!policyConfig) {
+    if (config.mode === "production") {
+      return { allowed: false, reason: "Policy not loaded" };
+    }
+    return { allowed: true, reason: "Policy not loaded (bootstrap mode — allowing)" };
+  }
+
+  const tw = policyConfig.time_windows;
+  if (!tw || tw.enabled === false || tw.enabled === "false") {
+    return { allowed: true, reason: "Time windows disabled in policy" };
+  }
+
+  const ops = tw.operations;
+  if (!ops || !ops[operationType]) {
+    return { allowed: true, reason: `No time window configured for '${operationType}'` };
+  }
+
+  const opConfig = ops[operationType];
+  const windows = opConfig.windows;
+  if (!windows || !Array.isArray(windows) || windows.length === 0) {
+    return { allowed: true, reason: `No windows defined for '${operationType}'` };
+  }
+
+  const now = new Date();
+  const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  const currentDay = dayNames[now.getUTCDay()];
+  const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+
+  for (const win of windows) {
+    // Parse days — handle both array and inline string "[mon, tue, ...]"
+    let days = win.days;
+    if (typeof days === "string") {
+      days = days.replace(/^\[|\]$/g, "").split(",").map((d) => d.trim().toLowerCase());
+    }
+    if (!Array.isArray(days) || !days.includes(currentDay)) continue;
+
+    // parseSimpleYaml may place start/end on parent opConfig instead of list item
+    const start = win.start || opConfig.start || "00:00";
+    const end = win.end || opConfig.end || "23:59";
+    const [startH, startM] = String(start).split(":").map(Number);
+    const [endH, endM] = String(end).split(":").map(Number);
+    const startMin = startH * 60 + (startM || 0);
+    const endMin = endH * 60 + (endM || 0);
+
+    if (currentMinutes >= startMin && currentMinutes <= endMin) {
+      return { allowed: true, reason: `Within time window for '${operationType}'` };
+    }
+  }
+
+  const outsideAction = opConfig.outside_window_action || "deny";
+  if (outsideAction === "allow") {
+    return { allowed: true, reason: `Outside time window for '${operationType}' but outside_window_action=allow` };
+  }
+  return { allowed: false, reason: `Outside allowed time window for '${operationType}'` };
+}
+
+/**
+ * Check if an action type has exceeded its policy-defined rate limit.
+ * Returns { allowed: boolean, reason: string }
+ */
+function policyCheckActionRateLimit(actionType) {
+  if (!policyConfig) {
+    if (config.mode === "production") {
+      return { allowed: false, reason: "Policy not loaded" };
+    }
+    return { allowed: true, reason: "Policy not loaded (bootstrap mode — allowing)" };
+  }
+
+  const rl = policyConfig.rate_limits;
+  if (!rl) {
+    return { allowed: true, reason: "No rate limits configured" };
+  }
+
+  const now = Date.now();
+  const ONE_HOUR = 3600000;
+  const ONE_DAY = 86400000;
+
+  // Per-action rate limit
+  if (rl.actions && rl.actions[actionType]) {
+    const limits = rl.actions[actionType];
+    const maxPerHour = parseInt(limits.max_per_hour, 10) || Infinity;
+    const maxPerDay = parseInt(limits.max_per_day, 10) || Infinity;
+
+    let state = actionRateLimitState.perAction.get(actionType);
+    if (!state) {
+      state = { hourly: { count: 0, resetTime: now + ONE_HOUR }, daily: { count: 0, resetTime: now + ONE_DAY } };
+      actionRateLimitState.perAction.set(actionType, state);
+    }
+    if (now > state.hourly.resetTime) state.hourly = { count: 0, resetTime: now + ONE_HOUR };
+    if (now > state.daily.resetTime) state.daily = { count: 0, resetTime: now + ONE_DAY };
+
+    if (state.hourly.count >= maxPerHour) {
+      return { allowed: false, reason: `Action '${actionType}' hourly rate limit exceeded (${maxPerHour}/hr)` };
+    }
+    if (state.daily.count >= maxPerDay) {
+      return { allowed: false, reason: `Action '${actionType}' daily rate limit exceeded (${maxPerDay}/day)` };
+    }
+  }
+
+  // Global rate limit
+  if (rl.global) {
+    const maxHour = parseInt(rl.global.max_actions_per_hour, 10) || Infinity;
+    const maxDay = parseInt(rl.global.max_actions_per_day, 10) || Infinity;
+    const g = actionRateLimitState.global;
+    if (now > g.hourly.resetTime) g.hourly = { count: 0, resetTime: now + ONE_HOUR };
+    if (now > g.daily.resetTime) g.daily = { count: 0, resetTime: now + ONE_DAY };
+
+    if (g.hourly.count >= maxHour) {
+      return { allowed: false, reason: `Global hourly action rate limit exceeded (${maxHour}/hr)` };
+    }
+    if (g.daily.count >= maxDay) {
+      return { allowed: false, reason: `Global daily action rate limit exceeded (${maxDay}/day)` };
+    }
+  }
+
+  return { allowed: true, reason: "Action rate limit OK" };
+}
+
+/**
+ * Increment action rate limit counters after successful execution.
+ */
+function recordActionExecution(actionType) {
+  const now = Date.now();
+  const ONE_HOUR = 3600000;
+  const ONE_DAY = 86400000;
+
+  let state = actionRateLimitState.perAction.get(actionType);
+  if (!state) {
+    state = { hourly: { count: 0, resetTime: now + ONE_HOUR }, daily: { count: 0, resetTime: now + ONE_DAY } };
+    actionRateLimitState.perAction.set(actionType, state);
+  }
+  if (now > state.hourly.resetTime) state.hourly = { count: 0, resetTime: now + ONE_HOUR };
+  if (now > state.daily.resetTime) state.daily = { count: 0, resetTime: now + ONE_DAY };
+  state.hourly.count++;
+  state.daily.count++;
+
+  const g = actionRateLimitState.global;
+  if (now > g.hourly.resetTime) g.hourly = { count: 0, resetTime: now + ONE_HOUR };
+  if (now > g.daily.resetTime) g.daily = { count: 0, resetTime: now + ONE_DAY };
+  g.hourly.count++;
+  g.daily.count++;
+}
+
+/**
+ * Check idempotency / duplicate detection for an action.
+ * Returns { allowed: boolean, reason: string }
+ */
+function policyCheckIdempotency(actionType, target) {
+  if (!policyConfig) {
+    if (config.mode === "production") {
+      return { allowed: false, reason: "Policy not loaded" };
+    }
+    return { allowed: true, reason: "Policy not loaded (bootstrap mode — allowing)" };
+  }
+
+  const idemp = policyConfig.idempotency;
+  if (!idemp || idemp.enabled === false || idemp.enabled === "false") {
+    return { allowed: true, reason: "Idempotency checks disabled in policy" };
+  }
+
+  const dd = idemp.duplicate_detection;
+  if (dd && (dd.enabled === true || dd.enabled === "true")) {
+    const windowMs = (parseInt(dd.window_minutes, 10) || 60) * 60 * 1000;
+    const key = `${actionType}:${target}`;
+    const lastExec = actionDeduplicationState.get(key);
+
+    if (lastExec && (Date.now() - lastExec) < windowMs) {
+      const denyReason = dd.deny_reason || "DUPLICATE_REQUEST";
+      const minutesAgo = Math.round((Date.now() - lastExec) / 60000);
+      return {
+        allowed: false,
+        reason: `${denyReason}: '${actionType}' on '${target}' was executed ${minutesAgo} minutes ago (window: ${dd.window_minutes || 60}min)`,
+      };
+    }
+  }
+
+  return { allowed: true, reason: "Idempotency check passed" };
+}
+
+/**
+ * Record a successful action execution for deduplication tracking.
+ */
+function recordActionForDedup(actionType, target) {
+  const key = `${actionType}:${target}`;
+  if (actionDeduplicationState.size >= MAX_DEDUP_ENTRIES && !actionDeduplicationState.has(key)) {
+    let oldestKey = null;
+    let oldestTime = Infinity;
+    for (const [k, t] of actionDeduplicationState) {
+      if (t < oldestTime) { oldestTime = t; oldestKey = k; }
+    }
+    if (oldestKey) actionDeduplicationState.delete(oldestKey);
+  }
+  actionDeduplicationState.set(key, Date.now());
 }
 
 // Resolve logical tool name to MCP tool name
@@ -3647,6 +3929,13 @@ module.exports = {
   policyCheckAction,
   policyCheckApprover,
   policyCheckEvidence,
+  policyCheckTimeWindow,
+  policyCheckActionRateLimit,
+  policyCheckIdempotency,
+  recordActionExecution,
+  recordActionForDedup,
+  resetActionRateLimitState,
+  resetDeduplicationState,
   // Metrics
   incrementMetric,
   recordLatency,
@@ -3805,6 +4094,41 @@ function setupCleanupIntervals() {
     }
   }, 300000);
   cleanupIntervals.push(enrichmentCleanup);
+
+  // Action rate limit state cleanup (evict entries with both windows expired)
+  const actionRateLimitCleanup = setInterval(() => {
+    const now = Date.now();
+    let removed = 0;
+    for (const [actionType, counters] of actionRateLimitState.perAction) {
+      if (now > counters.hourly.resetTime && now > counters.daily.resetTime) {
+        actionRateLimitState.perAction.delete(actionType);
+        removed++;
+      }
+    }
+    if (removed > 0) {
+      log("debug", "cleanup", "Expired action rate limit entries removed", { count: removed });
+    }
+  }, 300000);
+  cleanupIntervals.push(actionRateLimitCleanup);
+
+  // Deduplication state cleanup (evict entries older than window)
+  const dedupCleanup = setInterval(() => {
+    const windowMs = policyConfig?.idempotency?.duplicate_detection?.window_minutes
+      ? parseInt(policyConfig.idempotency.duplicate_detection.window_minutes, 10) * 60 * 1000
+      : 60 * 60 * 1000; // default 60 minutes
+    const cutoff = Date.now() - windowMs;
+    let removed = 0;
+    for (const [key, ts] of actionDeduplicationState) {
+      if (ts < cutoff) {
+        actionDeduplicationState.delete(key);
+        removed++;
+      }
+    }
+    if (removed > 0) {
+      log("debug", "cleanup", "Expired dedup entries removed", { count: removed });
+    }
+  }, 300000);
+  cleanupIntervals.push(dedupCleanup);
 }
 
 // Issue #12 fix: Add configurable shutdown timeout with force kill

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Runtime enforcement for policy time_windows, rate_limits, and idempotency**: These three policy.yaml sections were previously declarative only. The runtime now enforces them:
+  - **Time windows**: `policyCheckTimeWindow()` blocks `createResponsePlan()` and `executePlan()` outside configured UTC day/time windows (respects `outside_window_action: allow|deny`)
+  - **Rate limits**: `policyCheckActionRateLimit()` enforces per-action and global hourly/daily rate limits inside the plan execution action loop. Counters auto-reset on window expiry.
+  - **Idempotency**: `policyCheckIdempotency()` blocks duplicate action+target pairs within the configured `window_minutes` (default 60min)
+  - Denied actions are skipped individually (rate limit / idempotency) or fail the entire plan (time window), with `policy_denies_total` metric incremented using reason labels `time_window_denied`, `action_rate_limited`, `global_rate_limited`, `duplicate_action`
+  - Cleanup intervals evict expired rate limit and dedup state every 5 minutes
+- 21 new tests (276 total): Time window, rate limit, idempotency, and reset helper tests
+
 ## [2.4.3] - 2026-02-27
 
 ### Fixed
