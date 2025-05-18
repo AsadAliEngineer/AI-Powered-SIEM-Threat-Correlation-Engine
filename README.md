@@ -1,156 +1,275 @@
 <div align="center">
 
-<h1>🛡️ Wazuh Autopilot</h1>
+<img src="docs/images/siem-hero.png" width="100%" alt="AI-Powered SIEM Threat Correlation Engine concept dashboard">
 
-<h3>Your Wazuh SIEM, run by an autonomous AI SOC team — that triages, investigates, and responds in seconds, while humans stay in control.</h3>
+# 🛡️ AI-Powered SIEM Threat Correlation Engine
 
-<p>
-  <strong>A full AI SOC team — eleven security-expert agents: a seven-stage reactive pipeline (Tier 1 → Tier 2 → DFIR → IR Lead → Compliance → Containment → SOC Manager) plus four proactive specialists (Vulnerability Management, Threat Intel, Threat Hunting, Detection Engineering).</strong><br/>
-  Every containment action is gated behind two-tier human approval. No alert goes unread. Every decision leaves an evidence trail.
-</p>
+### Real-time security telemetry, multi-signal correlation, AI-assisted investigation, and human-led incident response
 
-<p>
-  <a href="https://github.com/gensecaihq/Wazuh-Autopilot/releases"><img src="https://img.shields.io/github/v/release/gensecaihq/Wazuh-Autopilot?color=2ea44f&label=release&style=flat-square" alt="Release"/></a>
-  <a href="https://github.com/gensecaihq/Wazuh-Autopilot/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"/></a>
-  <a href="https://github.com/gensecaihq/Wazuh-Autopilot/actions"><img src="https://img.shields.io/github/actions/workflow/status/gensecaihq/Wazuh-Autopilot/ci.yml?label=CI&style=flat-square" alt="CI"/></a>
-  <img src="https://img.shields.io/badge/tests-587%20passing-2ea44f?style=flat-square" alt="Tests"/>
-  <a href="https://github.com/gensecaihq/Wazuh-Autopilot/issues"><img src="https://img.shields.io/github/issues/gensecaihq/Wazuh-Autopilot?style=flat-square" alt="Issues"/></a>
-  <a href="https://github.com/gensecaihq/Wazuh-Autopilot/stargazers"><img src="https://img.shields.io/github/stars/gensecaihq/Wazuh-Autopilot?style=social" alt="Stars"/></a>
-</p>
+**Ingest · Correlate · Investigate · Respond**
 
 <p>
-  <img src="https://img.shields.io/badge/Wazuh-0080FF?style=for-the-badge&logo=wazuh&logoColor=white" alt="Wazuh"/>
-  <img src="https://img.shields.io/badge/OpenClaw-FF6B35?style=for-the-badge&logoColor=white" alt="OpenClaw"/>
-  <img src="https://img.shields.io/badge/Hermes-6E56CF?style=for-the-badge&logoColor=white" alt="Hermes Agent"/>
-  <img src="https://img.shields.io/badge/NVIDIA%20NemoClaw-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA NemoClaw"/>
-  <img src="https://img.shields.io/badge/MCP-6B4FBB?style=for-the-badge&logoColor=white" alt="MCP"/>
+  <img src="https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-REST_&_WebSocket-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=0B1220" alt="React">
+  <img src="https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/SQLAlchemy-2.x-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white" alt="SQLAlchemy">
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/License-MIT-F4C430?style=for-the-badge" alt="MIT License">
 </p>
 
-<p>
-  <a href="#-quick-start"><b>Quick Start</b></a> &nbsp;·&nbsp;
-  <a href="#-how-it-works"><b>How It Works</b></a> &nbsp;·&nbsp;
-  <a href="#-agent-runtimes"><b>Runtimes</b></a> &nbsp;·&nbsp;
-  <a href="#-deployment-options"><b>Deploy</b></a> &nbsp;·&nbsp;
-  <a href="docs/RUNTIME_API.md"><b>API</b></a> &nbsp;·&nbsp;
-  <a href="docs/ARCHITECTURE.md"><b>Architecture</b></a> &nbsp;·&nbsp;
-  <a href="CHANGELOG.md"><b>Changelog</b></a>
-</p>
+[Overview](#-executive-overview) · [Architecture](#%EF%B8%8F-system-architecture) · [Detection](#-detection--correlation-logic) · [Visual Tour](#-visual-product-tour) · [API](#-api-surface) · [Setup](#-quick-start) · [Security](#-security--production-readiness) · [Maintainer](#-developer--maintainer)
 
 </div>
 
 ---
 
-> **Wazuh Autopilot** closes the gap between *detection* and *response*. A Wazuh alert that used to wait hours in a queue is triaged in ~40 seconds, correlated across your fleet, investigated with 7+ live pivot queries, and turned into a risk-assessed response plan — all before an analyst opens their laptop. When it's time to act, a human clicks **Approve** and **Execute**. Nothing dangerous happens without you.
+> [!IMPORTANT]
+> This repository is a **defensive security engineering and training project**. The included simulator uses synthetic events, but the application should still be isolated from production networks until authentication, authorization, rate limiting, secret management, persistence, and deployment controls are hardened.
 
-<div align="center">
+## 🎯 Executive Overview
 
-**⚡ ~40s triage** &nbsp;·&nbsp; **🔍 7+ auto pivots/case** &nbsp;·&nbsp; **✅ 2-tier human approval** &nbsp;·&nbsp; **🧩 55 Wazuh MCP tools** &nbsp;·&nbsp; **🕓 24/7 coverage** &nbsp;·&nbsp; **🔒 air-gap ready**
+The **AI-Powered SIEM Threat Correlation Engine** is a full-stack security operations platform built with **FastAPI**, **React**, **SQLAlchemy**, and **WebSockets**. It accepts structured security logs, parses and stores events, evaluates active detection rules, correlates authentication behavior within sliding time windows, generates alerts, and streams new detections to the analyst dashboard in real time.
 
-</div>
+Beyond alerting, the platform includes analyst-managed incident cases, live operational metrics, threat telemetry, UEBA-oriented views, controlled attack simulation, reporting workflows, and AI-assisted investigation playbooks. AI output is advisory: analysts review the evidence and retain responsibility for every response action.
+
+### 📊 Platform at a Glance
+
+| Capability | Current implementation |
+|---|---|
+| 📥 **Collection** | Single or bulk structured-log ingestion over REST |
+| ⚡ **Processing** | Direct processing or asynchronous background queue mode |
+| 🧩 **Detection** | Cached regex rules plus stateful authentication correlation |
+| 🚨 **Alerting** | Severity-tagged alerts persisted and broadcast over WebSockets |
+| 📈 **Visibility** | KPI cards, time-series charts, event tables, and world telemetry |
+| 👤 **UEBA views** | User risk profiles, anomalous activity, and risky-resource summaries |
+| 🤖 **AI assistance** | Structured playbooks and chat through OpenRouter or Mistral, with a local fallback |
+| 🗂️ **Cases** | Analyst-created cases with status, assignee, notes, and linked alerts |
+| 🧪 **Simulation** | Synthetic brute-force, credential, web, and network scenarios |
+| 🐳 **Delivery** | Local development workflow and Docker Compose stack |
 
 ---
 
-## ⭐ Why Star This Project
+## ✨ Core Capabilities
 
-- **A real SOC team, not a chatbot** — eleven agents with distinct security-expert personas: a seven-stage reactive pipeline plus proactive vulnerability management, threat intel, hunting, and detection engineering.
-- **Humans stay in control** — AI *proposes*, humans *approve* and *execute*. Two-tier approval with separation of duties, enforced in code.
-- **Runs anywhere** — cloud LLMs, self-hosted GPU (vLLM), fully air-gapped (Ollama), or the NVIDIA stack (NemoClaw + Nemotron) — same pipeline.
-- **Three agent runtimes** — [OpenClaw](openclaw/README.md) (default), [Hermes](docs/HERMES_DEPLOYMENT.md) (analyst chat-ops), [NemoClaw](docs/NEMOCLAW_DEPLOYMENT.md) (governed, NVIDIA-sandboxed).
-- **Production-grade** — 587 passing tests, structured evidence packs, Prometheus SOC KPIs, policy engine, crash recovery, security-audited.
+- ⚡ **Real-time operations:** new alerts are pushed to connected dashboards through `/ws/alerts`.
+- 📦 **Queue-backed ingestion:** logs can be accepted asynchronously and processed by a background worker.
+- 🧠 **Stateful correlation:** related authentication events are evaluated across a 60-second sliding window.
+- 🧬 **Signature detection:** active regex rules identify web, network, malware, and policy patterns.
+- 🔄 **Rule hot refresh:** enabled database rules are cached in memory for correlation.
+- 🚦 **Alert lifecycle:** analysts can filter alerts and update investigation status.
+- 🤖 **AI investigation support:** alert context can produce a structured draft playbook and streamed chat response.
+- 🗃️ **Analysis caching:** generated alert summaries and playbooks are saved with the alert record.
+- 👥 **Human-led cases:** analysts create cases, link relevant alerts, assign ownership, and track resolution.
+- 🌍 **Operational intelligence:** the frontend combines Recharts analytics with an SVG world map.
+- 🧪 **Safe demonstrations:** browser controls and a standalone daemon generate synthetic telemetry.
+- 📄 **Reporting workspace:** case and security reporting views organize findings for review.
 
 ---
 
-## What It Does
+## 🏗️ System Architecture
 
-A Wazuh alert fires. Within minutes — not hours — your SOC has:
+<img src="docs/images/system-architecture.png" width="100%" alt="Architecture of the SIEM ingestion, correlation, alerting, AI, and case-management workflow">
 
-1. **Triaged** the alert with entity extraction, MITRE mapping, and severity assessment
-2. **Correlated** it with related alerts across hosts, IPs, and users
-3. **Investigated** via live Wazuh queries — auth history, process trees, lateral movement checks
-4. **Generated a response plan** with risk assessment and rollback procedures
-5. **Executed the response** (IP block, host isolation, process kill) — only after human approval
+```text
+Security sources
+      │
+      ▼
+FastAPI ingestion endpoint ───────► background queue (optional)
+      │                                      │
+      └──────────────────┬───────────────────┘
+                         ▼
+                 parse + persist log
+                         │
+                         ▼
+              cached detection rules
+                         │
+                         ▼
+        signatures + sliding-window correlation
+                         │
+                         ▼
+                alert persistence
+                         │
+             ┌───────────┴───────────┐
+             ▼                       ▼
+      WebSocket broadcast      AI draft playbook
+             │                       │
+             ▼                       ▼
+       React SOC dashboard     analyst review
+             │
+             ▼
+      manual case management
+```
 
-No alert sits unread. No playbook gets skipped. Every action has an evidence trail.
+### 🧱 Component Responsibilities
 
-### Before and After
+| Layer | Responsibility |
+|---|---|
+| **React + Vite** | Dashboard shell, alert triage, charts, map, cases, UEBA, simulator, reports, and settings |
+| **FastAPI** | REST endpoints, WebSocket endpoint, validation, startup lifecycle, and service orchestration |
+| **Queue worker** | Optional asynchronous log-processing path |
+| **Parser service** | Normalizes raw or structured event content before persistence |
+| **Rule cache** | Keeps active detection rules available to the correlation engine |
+| **Correlation engine** | Runs regex matching and authentication sequence checks |
+| **SQLAlchemy layer** | Stores logs, rules, alerts, cases, and AI analysis fields |
+| **AI service** | Uses OpenRouter or Mistral when configured and a local response fallback otherwise |
+| **WebSocket manager** | Broadcasts correlated alerts to connected clients |
 
-| | Without Autopilot | With Autopilot |
+---
+
+## 🧠 Detection & Correlation Logic
+
+<img src="docs/images/correlation-engine.png" width="100%" alt="Threat correlation engine combining authentication, web, and firewall events">
+
+### Stateful Authentication Correlation
+
+| Scenario | Correlation key | Default threshold | Window |
+|---|---|---:|---:|
+| 🔐 **Brute force** | Failed logins from one source IP | 5 attempts | 60 seconds |
+| 🎭 **Credential stuffing** | Unique usernames targeted by one source IP | 3 users | 60 seconds |
+| 🌐 **Distributed brute force** | Unique source IPs targeting one username | 3 sources | 60 seconds |
+
+When a threshold is reached, the relevant in-memory tracker is cleared and a new alert is persisted with the rule severity and triggering-log relationship.
+
+### Seeded Signature Rules
+
+| Rule family | Example signal | Correlation behavior |
 |---|---|---|
-| **Alert triage** | Manual review, 15-60 min per alert | Automatic, ~40 seconds |
-| **Investigation** | Analyst runs queries, cross-references | 7+ pivot queries run automatically |
-| **Response** | Find playbook, execute manually | Risk-assessed plan, one-click approve |
-| **Evidence** | Scattered across tools | Structured JSON evidence pack per case |
-| **Coverage** | Business hours, analyst availability | 24/7, every alert processed |
+| **SQL injection** | SQL syntax patterns in web request content | Immediate signature alert |
+| **Cross-site scripting** | Script or HTML-injection patterns | Immediate signature alert |
+| **Network scanning** | Nmap or port-scan characteristics | Immediate signature alert |
+| **Malware activity** | Trojan, backdoor, or malware indicators | Immediate signature alert |
+| **Policy violation** | Forbidden access or privilege-bypass patterns | Immediate signature alert |
+
+> [!NOTE]
+> Regex and short-window counters are intentionally understandable for learning and demonstrations. Production detection requires normalized schemas, durable correlation state, tuning, suppression, enrichment, versioned content, and measured false-positive/false-negative performance.
 
 ---
 
-## 🔬 How It Works
+## 🖼️ Visual Product Tour
 
-```
-  Wazuh Alert
-       │
-       ▼
-  ┌─────────┐    ┌─────────────┐    ┌───────────────┐    ┌──────────────┐
-  │ Triage  │───▶│ Correlation │───▶│ Investigation │───▶│   Response   │
-  │  Agent  │    │    Agent    │    │    Agent      │    │   Planner    │
-  └─────────┘    └─────────────┘    └───────────────┘    └──────┬───────┘
-   Extract IOCs   Group related      Query Wazuh via       Generate plan
-   Map MITRE       alerts into        MCP (55 tools)       Assess risk
-   Set severity    unified cases      Build timeline       Assign actions
-                                                                │
-                                                                ▼
-                                                     ┌──────────────────┐
-                                                     │  Policy Guard    │
-                                                     │  + Human Review  │
-                                                     └────────┬─────────┘
-                                                              │
-                                                     [Approve] [Reject]
-                                                              │
-                                                              ▼
-                                                     ┌──────────────────┐
-                                                     │   Responder      │
-                                                     │   (Execution)    │
-                                                     └──────────────────┘
-                                                      block_ip, isolate_host,
-                                                      kill_process, disable_user...
-```
+> [!NOTE]
+> All eight visuals in this README are **high-fidelity concept illustrations** created for project presentation. They use simulated data and are not pixel-identical screenshots, benchmark evidence, or claims of production deployment.
 
-The diagram above is the **seven-stage reactive pipeline**. Each agent has a single responsibility, its own playbook, and communicates through the runtime service via webhooks. The runtime enforces policy at every step — action allowlists, confidence thresholds, rate limits, time windows, and idempotency checks.
+### 1. 🖥️ Live Security Operations Center
 
-Alongside it run **four proactive specialists** — **Vulnerability Management** (risk-based CVE prioritization via KEV/EPSS/CVSS/SSVC), **Threat Intelligence** (IOC enrichment + ATT&CK attribution), **Threat Hunter** (proactive hypothesis-driven hunts), and **Detection Engineer** (turns coverage gaps and hunt findings into detection proposals). Eleven agents total; see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+<img src="docs/images/soc-dashboard.png" width="100%" alt="Conceptual real-time SIEM security operations dashboard">
 
-**AI agents never act autonomously.** Every response action requires explicit two-tier human approval (Approve + Execute). The responder capability is disabled by default.
+The operational view brings event volume, active alerts, critical incidents, open cases, timeline analytics, recent detections, and queue health into one workspace.
+
+### 2. 🌍 Global Threat Telemetry
+
+<img src="docs/images/global-threat-telemetry.png" width="100%" alt="Conceptual global threat telemetry map using simulated source data">
+
+Geographical context helps analysts spot changes in source distribution and move from regional trends to individual events. The current frontend uses world-map data and chart-based summaries.
+
+### 3. 🤖 AI Security Analyst
+
+<img src="docs/images/ai-security-playbook.png" width="100%" alt="Conceptual AI security analyst draft playbook with evidence and human review">
+
+Alert analysis can produce a structured summary, investigation checklist, containment guidance, and suggested controls. The output is explicitly a **draft** and is never a substitute for analyst validation.
+
+### 4. 🗂️ Incident Case Management
+
+<img src="docs/images/case-management.png" width="100%" alt="Conceptual analyst-managed incident case workspace">
+
+Cases are opened by analysts, not automatically by the correlation engine. Alerts can then be linked to a case while status, severity, assignment, notes, and reporting are managed through the investigation lifecycle.
+
+### 5. 👤 UEBA & Security Simulation Lab
+
+<img src="docs/images/ueba-simulation-lab.png" width="100%" alt="Conceptual UEBA analytics and defensive simulation lab">
+
+The UEBA view summarizes risky users, resources, and recent anomalies. The adjacent simulator creates isolated synthetic events for validating defensive detection paths.
 
 ---
 
-## Key Features
+## 🔄 Alert-to-Case Workflow
 
-**Detection & Analysis**
-- Autonomous alert triage with entity extraction (IPs, users, hosts, hashes)
-- MITRE ATT&CK technique and tactic mapping
-- Entity-based alert grouping into unified cases
-- AbuseIPDB IP reputation enrichment with TTL caching
-- Investigation agent runs 7+ pivot queries per case via [Wazuh MCP Server](https://github.com/gensecaihq/Wazuh-MCP-Server) (55 tools)
+1. **Ingest:** a source submits one or more structured security events.
+2. **Normalize:** the parser prepares event fields and the database stores the log.
+3. **Evaluate:** active cached rules and stateful correlation logic inspect the event.
+4. **Alert:** matching activity creates a severity-tagged alert with trigger context.
+5. **Broadcast:** the WebSocket manager pushes the new alert to connected clients.
+6. **Triage:** an analyst reviews evidence and changes alert status.
+7. **Analyze:** the analyst may request an AI-generated draft playbook.
+8. **Escalate manually:** the analyst creates a case and links selected alerts.
+9. **Investigate:** the case tracks ownership, notes, state, evidence, and reporting.
 
-**Response & Enforcement**
-- Risk-assessed response plans with rollback metadata
-- 9 Wazuh Active Response actions (block IP, isolate host, kill process, disable user, quarantine file, firewall drop, host deny, restart, generic AR)
-- Inline policy enforcement: action allowlists, confidence thresholds, approver authorization, evidence requirements, time windows, rate limits, idempotency
-- Two-tier approval workflow with separation of duties
+---
 
-**Observability & Reporting**
-- Structured JSON evidence packs for compliance and forensics
-- Prometheus metrics with SOC KPIs (MTTD, MTTT, MTTI, MTTR, MTTC)
-- KPI endpoint with SLA compliance tracking
-- Reporting agent generates hourly, daily, weekly, and monthly SOC health reports
-- Slack integration with real-time alerts and interactive approval buttons (Socket Mode)
+## 🤖 AI Analyst Routing
 
-**Operations**
-- Crash recovery for plans stuck mid-execution
-- Stalled pipeline detection with automatic re-dispatch
-- Alert dedup across date boundaries
-- LLM type coercion for local model compatibility
-- Investigation findings auto-promoted to case severity/confidence
+The AI service chooses an available provider at runtime:
+
+```text
+OpenRouter configured?
+    ├── yes → OpenRouter chat/completions
+    └── no
+         │
+         ▼
+Mistral configured?
+    ├── yes → LangChain ChatMistralAI
+    └── no  → local deterministic fallback
+```
+
+The alert-analysis endpoint stores generated playbook content so repeated requests can return the cached analysis. Chat supports streamed responses when an external provider is active.
+
+> [!WARNING]
+> Security logs are untrusted input. Before production use, protect the AI layer against prompt injection, redact sensitive data, constrain tool permissions, validate structured output, record provenance, and require explicit analyst approval before any action.
+
+---
+
+## 🔌 API Surface
+
+| Method | Route | Purpose |
+|---|---|---|
+| `GET` | `/` | API status and documentation links |
+| `GET` | `/api/v1/health` | Application and database health check |
+| `POST` | `/api/v1/logs/ingest` | Ingest log batches; supports `async_mode` |
+| `GET` | `/api/v1/logs/stats` | Dashboard and UEBA-oriented statistics |
+| `GET/POST/PUT` | `/api/v1/rules` | List, create, and update detection rules |
+| `GET` | `/api/v1/alerts` | Filter and retrieve alerts |
+| `PUT` | `/api/v1/alerts/{alert_id}/status` | Update alert investigation status |
+| `POST` | `/api/v1/alerts/{alert_id}/analyze` | Generate or retrieve a cached AI playbook |
+| `POST` | `/api/v1/alerts/chat` | Stream an AI security-assistant response |
+| `GET/POST/PUT/DELETE` | `/api/v1/cases` | Manage analyst-created incident cases |
+| `POST` | `/api/v1/cases/{case_id}/alerts` | Link an alert to a case |
+| `WS` | `/ws/alerts` | Stream newly correlated alerts |
+
+Interactive API documentation is exposed by FastAPI at `/docs` and `/redoc` while the backend is running.
+
+---
+
+## 📁 Project Structure
+
+```text
+AI-Powered-SIEM-Threat-Correlation-Engine/
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/endpoints/       # Logs, rules, alerts, and cases
+│   │   ├── core/                   # Configuration, database, and logging
+│   │   ├── models/                 # SQLAlchemy models and Pydantic schemas
+│   │   ├── services/               # Parser, queue, rules, correlation, AI, simulator
+│   │   └── main.py                 # FastAPI app and WebSocket endpoint
+│   ├── tests/                      # Backend unit and integration tests
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── components/             # SOC views and analyst workflows
+│   │   ├── services/api.js         # REST client configuration
+│   │   ├── App.jsx                 # Application shell and real-time state
+│   │   └── index.css               # Theme and layout system
+│   ├── package.json
+│   ├── vite.config.js
+│   └── Dockerfile
+├── docs/images/                    # Eight README concept visuals
+├── simulator_daemon.py             # Continuous synthetic event generator
+├── docker-compose.yml              # Frontend and backend orchestration
+├── SECURITY.md                     # Vulnerability reporting guidance
+├── LICENSE                         # MIT License
+└── Readme.md                       # Project documentation
+```
 
 ---
 
@@ -158,443 +277,225 @@ Alongside it run **four proactive specialists** — **Vulnerability Management**
 
 ### Prerequisites
 
-| Requirement | Description |
+- Python 3.x
+- Node.js and npm
+- Git
+- Optional: Docker Desktop
+- Optional for live AI output: an OpenRouter or Mistral API key
+
+### 1. Clone
+
+```powershell
+git clone https://github.com/AsadAliEng/AI-Powered-SIEM-Threat-Correlation-Engine.git
+Set-Location AI-Powered-SIEM-Threat-Correlation-Engine
+```
+
+### 2. Configure the backend
+
+Create a `.env` file in the repository root:
+
+```env
+APP_NAME="AI-Powered SIEM"
+APP_ENV="development"
+DEBUG="True"
+DATABASE_URL="sqlite:///./siem_database.db"
+
+# Optional: configure either provider; local fallback works without a key.
+OPENROUTER_API_KEY=""
+OPENROUTER_MODEL_NAME="google/gemini-2.5-flash"
+MISTRAL_API_KEY=""
+MISTRAL_MODEL_NAME="mistral-large-latest"
+```
+
+Never commit real API keys. Keep `.env` out of version control and rotate any credential that may have been exposed.
+
+### 3. Start the FastAPI backend
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r backend\requirements.txt
+
+Set-Location backend
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Backend URLs:
+
+- API: `http://127.0.0.1:8000`
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- Health: `http://127.0.0.1:8000/api/v1/health`
+
+### 4. Start the React frontend
+
+Open a second PowerShell terminal from the repository root:
+
+```powershell
+Set-Location frontend
+npm ci
+npm run dev
+```
+
+The Vite development server normally opens on `http://127.0.0.1:5173`. Set `VITE_API_BASE_URL` if the backend is hosted elsewhere.
+
+### 5. Generate synthetic telemetry
+
+From the repository root in another terminal:
+
+```powershell
+python simulator_daemon.py --attack-ratio 0.2 --interval 2
+```
+
+| Option | Meaning |
 |---|---|
-| [Wazuh](https://wazuh.com) 4.8+ | SIEM platform, installed and running |
-| [Wazuh MCP Server](https://github.com/gensecaihq/Wazuh-MCP-Server) v4.3.0+ | MCP bridge for Wazuh API (55 tools) |
-| [OpenClaw](https://github.com/openclaw/openclaw) v2026.7.1+ | AI agent framework (latest stable; tested with v2026.7.1-2 — `npm install -g openclaw@latest`) |
-| Node.js 20+ | Runtime service (22+ recommended) |
-| LLM API Key | Claude, GPT, Groq, Mistral, or [local Ollama/vLLM](#local-llm-options) |
+| `--attack-ratio` | Proportion of generated events that simulate malicious behavior |
+| `--interval` | Delay in seconds between generated events |
 
-### Install
-
-```bash
-git clone https://github.com/gensecaihq/Wazuh-Autopilot.git
-cd Wazuh-Autopilot
-sudo ./install/install.sh
-```
-
-The installer handles MCP Server setup, OpenClaw configuration, agent deployment, and optional Slack integration. For air-gapped environments, use `--mode bootstrap`.
-
-### Configure
-
-```bash
-sudo nano /etc/wazuh-autopilot/.env
-```
-
-```bash
-# Wazuh connection
-WAZUH_HOST=localhost
-WAZUH_PORT=55000
-WAZUH_USER=wazuh-wui
-WAZUH_PASS=your-password
-
-# LLM provider (pick one — we recommend OpenRouter for simplicity)
-OPENROUTER_API_KEY=sk-or-...
-
-# Optional: Slack approval buttons
-SLACK_APP_TOKEN=xapp-...
-SLACK_BOT_TOKEN=xoxb-...
-```
-
-### Verify
-
-```bash
-curl http://localhost:9090/health
-curl http://localhost:9090/metrics
-```
+Use the simulator only in an isolated development or training environment.
 
 ---
 
-## 📦 Deployment Options
+## 🐳 Docker Compose
 
-| Method | Best For | Command |
-|---|---|---|
-| **Docker Compose** | Production | `docker-compose up -d` |
-| **Systemd** | Native Linux | `sudo ./install/install.sh` |
-| **Air-gapped** | Classified / offline | `sudo ./install/install.sh --mode bootstrap` + [guide](docs/AIR_GAPPED_DEPLOYMENT.md) |
-| **vLLM** | Self-hosted GPU | [vLLM Guide](docs/VLLM_DEPLOYMENT.md) |
-| **NemoClaw (NVIDIA)** | Governed / enterprise, NVIDIA stack | `curl -fsSL https://www.nvidia.com/nemoclaw.sh \| bash` + [guide](docs/NEMOCLAW_DEPLOYMENT.md) |
-| **Hermes Agent** | Analyst-assist / chat-ops | `curl -fsSL https://hermes-agent.nousresearch.com/install.sh \| bash` + [guide](docs/HERMES_DEPLOYMENT.md) |
-| **Manual** | Development | `cd runtime/autopilot-service && npm start` |
-
----
-
-## 🤖 Agent Runtimes
-
-The Autopilot pipeline runs on your choice of agent runtime:
-
-| Runtime | Shape | Inference | Guide |
-|---|---|---|---|
-| **[OpenClaw](openclaw/README.md)** (default) | 11 agents (7-stage pipeline + 4 specialists), webhook-driven, 24/7 | Any provider | [openclaw/](openclaw/README.md) |
-| **[Hermes Agent](hermes/README.md)** (Nous Research) | Single self-improving SOC analyst + subagents; CLI/TUI and messaging gateway | Nous Portal, OpenRouter, any OpenAI-compatible endpoint | [HERMES_DEPLOYMENT.md](docs/HERMES_DEPLOYMENT.md) |
-| **[NemoClaw](nemoclaw/README.md)** (NVIDIA) | OpenClaw or Hermes wrapped in the NVIDIA OpenShell sandbox — policy enforcement outside the agent, managed inference, snapshots | **NVIDIA stack only**: Nemotron 3 via build.nvidia.com, local NIM, or Ollama-Nemotron | [NEMOCLAW_DEPLOYMENT.md](docs/NEMOCLAW_DEPLOYMENT.md) |
-
-> **NemoClaw rule**: a NemoClaw deployment is NVIDIA end-to-end — Nemotron 3 models, NIM/build.nvidia.com inference, OpenShell runtime. No third-party model providers. See [nemoclaw/README.md](nemoclaw/README.md).
-
-All runtimes share the same Wazuh MCP server, Runtime API, and two-tier human approval workflow.
-
-### Scaling to a Swarm
-
-The eleven agents form a virtual SOC team (see [agent personas](openclaw/agents/_shared/SOUL.md)) — and the same roles scale horizontally into a swarm when alert volume demands it:
-
-- **OpenClaw**: raise `agents.defaults.maxConcurrent` and per-agent heartbeat frequency — each webhook delivery and heartbeat run is an independent session, so one triage agent definition fans out across many alerts in parallel.
-- **Hermes**: the analyst agent spawns isolated **subagents** for parallel workstreams (e.g., one per pivot during a multi-host investigation).
-- **NemoClaw**: run multiple OpenShell sandboxes (`NEMOCLAW_SANDBOX_NAME=wazuh-autopilot-{1..n}`) behind the same Runtime API for fleet-style isolation — each sandbox is independently policed, snapshotted, and rollback-able.
-
-Whatever the swarm size, every response action still funnels through the single Policy Guard gate and two-tier human approval — more workers, same chain of command.
-
----
-
-## LLM Providers
-
-OpenClaw is model-agnostic. Use any provider:
-
-| Provider | Best For | Cost |
-|---|---|---|
-| [OpenRouter](https://openrouter.ai/) | Safest option — 300+ models, single key, no ban risk | Pay per token |
-| [Anthropic](https://console.anthropic.com/) | Best reasoning (Claude) | Pay per token |
-| [Groq](https://console.groq.com/) | Ultra-fast inference | Free tier available |
-| [Ollama](https://ollama.com) | Air-gapped / free | Free (local) |
-| [vLLM](https://github.com/vllm-project/vllm) | Self-hosted GPU inference | Hardware only |
-| [NVIDIA build.nvidia.com](https://build.nvidia.com) | Nemotron 3 hosted / NIM local — required for [NemoClaw](nemoclaw/README.md) | Free tier available |
-
-Plus OpenAI, Google, Mistral, xAI, Together, Cerebras. See [full provider guide](#provider-details) below.
-
-> **API Keys Only**: Use pay-per-token API keys, not subscription OAuth tokens. Anthropic and Google have banned subscription tokens in third-party tools. [Details](#provider-policy-notice).
-
----
-
-## Human-in-the-Loop Approval
-
-```
- PROPOSED ────▶ APPROVED ────▶ EXECUTED
-    │               │               │
-    ▼               ▼               ▼
- Policy Check   Policy Check    Policy Check
- ─ allowlist    ─ approver ID   ─ evidence
- ─ confidence   ─ risk level    ─ time window
- ─ time window                  ─ rate limit
-                                ─ idempotency
+```powershell
+docker compose up --build
 ```
 
-AI agents generate plans. Humans approve them. The runtime enforces policy at every step. **No action executes without human authorization.**
-
----
-
-## Wazuh Compatibility
-
-Tested via [Wazuh MCP Server](https://github.com/gensecaihq/Wazuh-MCP-Server) v4.3.0 (55 tools):
-
-| Wazuh Version | Status |
+| Service | Local address |
 |---|---|
-| **4.14.x** | Fully Supported (recommended) |
-| 4.8.x – 4.13.x | Fully Supported |
-| 4.0.0 – 4.7.x | Limited (no vulnerability tools) |
+| Frontend | `http://localhost` |
+| Backend | `http://localhost:8000` |
+| API docs | `http://localhost:8000/docs` |
 
-Platforms: Ubuntu 22.04/24.04, Debian 11/12, RHEL/Rocky/AlmaLinux 8/9, Docker.
+Stop the stack with:
 
----
-
-## API Reference
-
-### Core Endpoints
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `POST /api/alerts` | POST | Ingest Wazuh alert — triggers full pipeline |
-| `GET /api/cases` | GET | List cases (filter: `?status=`, `?severity=`, `?since=`, `?until=`) |
-| `GET /api/cases/summary` | GET | Aggregated case statistics |
-| `GET /api/cases/:id` | GET | Full case with evidence pack |
-| `GET /api/plans` | GET | List plans (filter: `?state=`, `?case_id=`) |
-| `GET /api/plans/:id` | GET | Plan details |
-| `POST /api/plans/:id/approve` | POST | Approve plan (Tier 1) |
-| `POST /api/plans/:id/execute` | POST | Execute plan (Tier 2) |
-| `GET /api/kpis` | GET | SLA/KPI metrics (`?period=24h`) |
-| `GET /api/reports` | GET | List stored reports |
-| `GET /metrics` | GET | Prometheus metrics |
-
-### Agent Action Endpoints (GET-based for `web_fetch`)
-
-| Endpoint | Description |
-|---|---|
-| `/api/agent-action/update-case` | Update case status/data |
-| `/api/agent-action/create-plan` | Create response plan |
-| `/api/agent-action/approve-plan` | Approve/deny plan |
-| `/api/agent-action/execute-plan` | Execute approved plan |
-| `/api/agent-action/store-report` | Store generated report |
-| `/api/agent-action/search-alerts` | Proxy search to Wazuh MCP |
-
-Full API documentation: [RUNTIME_API.md](docs/RUNTIME_API.md)
-
----
-
-## SOC KPIs & Reporting
-
-The runtime tracks case status transitions and computes SLA metrics:
-
-```bash
-curl http://localhost:9090/api/kpis?period=24h
-```
-
-```json
-{
-  "period": "24h",
-  "cases_analyzed": 50,
-  "mttt": 42,
-  "mtti": 138,
-  "mttr": 280,
-  "mttc": 450,
-  "auto_triage_rate": 0.92,
-  "false_positive_rate": 0.18,
-  "sla_compliance": {
-    "triage_within_15m": 0.95,
-    "response_within_1h": 0.82
-  }
-}
-```
-
-The reporting agent generates hourly, daily, weekly, and monthly SOC health reports automatically.
-
----
-
-## Evidence Packs
-
-Every case produces a structured evidence pack for compliance and forensics:
-
-```json
-{
-  "case_id": "CASE-20260327-1df903b68bc7",
-  "severity": "high",
-  "confidence": 0.95,
-  "entities": [
-    {"type": "ip", "value": "176.120.22.47", "role": "source"},
-    {"type": "host", "value": "virt-5378", "role": "victim"}
-  ],
-  "mitre": [{"technique_id": "T1110.001", "tactic": "Credential Access"}],
-  "investigation_notes": "200+ failed SSH login attempts over 7 days...",
-  "findings": {"classification": "brute_force", "confidence": 0.95},
-  "status_history": [
-    {"from": "open", "to": "triaged", "timestamp": "..."},
-    {"from": "triaged", "to": "investigated", "timestamp": "..."}
-  ],
-  "plans": [...],
-  "actions": [...],
-  "mcp_calls": [...]
-}
+```powershell
+docker compose down
 ```
 
 ---
 
-## Security
+## 🧪 Testing & Quality Checks
 
-| Layer | Protection |
-|---|---|
-| **Network** | All services localhost-only. Tailscale zero-trust for inter-node. |
-| **Auth** | Bearer token + query param auth. Timing-safe comparison. |
-| **Policy** | Inline enforcement at every pipeline step. Fail-closed in production. |
-| **Agents** | Sandboxed execution. Anti-injection instructions. No `exec` access. |
-| **Approval** | Two-tier human approval. Separation of duties. Bootstrap gate requires explicit opt-in. |
-| **MCP** | RBAC scopes (`wazuh:read`/`wazuh:write`). JWT auth. Circuit breaker. |
+The repository includes tests for schemas, rules, parsing, correlation, queues, ingestion, alerts, cases, statistics, and AI-service behavior.
 
----
-
-## Slack Integration
-
-Socket Mode — outbound-only, no webhooks or public endpoints required:
-
-- Real-time alert notifications with severity coloring
-- Interactive **[Approve]** / **[Reject]** / **[Execute]** buttons
-- Slash commands: `/wazuh status`, `/wazuh approve`, `/wazuh execute`
-- Confirmation dialogs for destructive actions
-
----
-
-## Project Structure
-
+```powershell
+Set-Location backend
+python -m pytest
 ```
-├── install/install.sh              # Security-hardened installer
-├── docker-compose.yml              # Production container orchestration
-├── openclaw/
-│   ├── openclaw.json               # Gateway & model config
-│   └── agents/                     # 11 SOC agents (7 pipeline + 4 specialist)
-├── hermes/                         # Hermes Agent runtime profile (Nous Research)
-├── nemoclaw/                       # NemoClaw profile — NVIDIA stack only (Nemotron/NIM/OpenShell)
-├── runtime/autopilot-service/
-│   ├── index.js                    # Runtime service (7,000+ LOC)
-│   ├── slack.js                    # Slack Socket Mode integration
-│   └── *.test.js                   # 587 tests across 16 files
-├── policies/
-│   ├── policy.yaml                 # Action allowlists, approvers, thresholds
-│   └── toolmap.yaml                # MCP tool mappings (9 actions + 5 verification + 5 rollback)
-├── playbooks/                      # 7 incident response playbooks
-└── docs/                           # 19 documentation files
+
+If `pytest` is not installed in your environment, install your project’s development/test dependencies before running the suite.
+
+Frontend checks:
+
+```powershell
+Set-Location frontend
+npm run lint
+npm run build
 ```
 
 ---
 
-## Local LLM Options
+## 🔐 Security & Production Readiness
 
-### Ollama (Air-Gapped)
+Before exposing this application beyond a trusted lab, address the following:
 
-Zero external network calls. Full data sovereignty. See [Air-Gapped Guide](docs/AIR_GAPPED_DEPLOYMENT.md).
+- [ ] Add real authentication, session security, and role-based authorization.
+- [ ] Replace permissive CORS with an explicit origin allowlist.
+- [ ] Add request-size limits, validation, throttling, and abuse protection to ingestion.
+- [ ] Store secrets in a managed secret store rather than frontend state or source files.
+- [ ] Put TLS and a hardened reverse proxy in front of the API and WebSocket endpoints.
+- [ ] Use a production database and durable correlation state for multi-worker deployment.
+- [ ] Add tenant isolation, audit trails, retention controls, and immutable evidence handling.
+- [ ] Sanitize untrusted log content before rendering it or sending it to an LLM.
+- [ ] Evaluate detection accuracy, alert duplication, latency, and failure recovery under load.
+- [ ] Restrict the simulator and administrative endpoints to authorized lab users.
+- [ ] Review container privileges, filesystem mounts, dependency versions, and network boundaries.
 
-```bash
-sudo ./install/install.sh --mode bootstrap
-```
-
-### vLLM (Self-Hosted GPU)
-
-Production-grade throughput with open-source models. See [vLLM Guide](docs/VLLM_DEPLOYMENT.md).
-
-```bash
-vllm serve Qwen/Qwen3-32B --enable-auto-tool-choice --tool-call-parser hermes
-```
-
-| Model | VRAM | Best For |
-|---|---|---|
-| Qwen3 32B | ~64 GB | Best tool calling |
-| Llama 3.3 70B | ~140 GB | Strongest reasoning |
-| DeepSeek-R1 70B | ~140 GB | Chain-of-thought |
+For responsible vulnerability reporting, see [`SECURITY.md`](SECURITY.md).
 
 ---
 
-## Provider Details
+## 🧭 Current Design Boundaries
 
-<details>
-<summary>Full provider list and configuration</summary>
-
-| Provider | Models | API Key Env |
-|---|---|---|
-| [OpenRouter](https://openrouter.ai/) | 300+ models | `OPENROUTER_API_KEY` |
-| [Anthropic](https://console.anthropic.com/) | Claude Sonnet 4.5, Haiku 4.5 | `ANTHROPIC_API_KEY` |
-| [OpenAI](https://platform.openai.com/) | GPT-4o, o3-mini | `OPENAI_API_KEY` |
-| [Groq](https://console.groq.com/) | Llama 3.3 70B, Mixtral | `GROQ_API_KEY` |
-| [Google](https://aistudio.google.com/) | Gemini 2.0 Flash/Pro | `GOOGLE_API_KEY` |
-| [Mistral](https://console.mistral.ai/) | Mistral Large, Codestral | `MISTRAL_API_KEY` |
-| [xAI](https://console.x.ai/) | Grok 2, Grok 3 | `XAI_API_KEY` |
-| [Ollama](https://ollama.com) | Llama, Mistral, Qwen | N/A (local) |
-| [vLLM](https://github.com/vllm-project/vllm) | Any HuggingFace model | `VLLM_API_KEY` |
-| [Together](https://together.xyz/) | Open-source models | `TOGETHER_API_KEY` |
-| [Cerebras](https://cerebras.ai/) | Ultra-fast inference | `CEREBRAS_API_KEY` |
-
-Model format: `"provider/model-name"` (e.g., `"anthropic/claude-sonnet-4-5"`).
-
-### Cost Optimization
-
-| Task | Recommended Model | Why |
-|---|---|---|
-| Complex investigation | `anthropic/claude-sonnet-4-5` | Best reasoning |
-| High-volume triage | `groq/llama-3.3-70b-versatile` | Fast and free |
-| Heartbeats | `anthropic/claude-haiku-4-5` | Cheapest Claude |
-| Air-gapped | `ollama/llama3.3` | No network |
-| GPU self-hosted | `vllm/qwen3-32b` | Best open-source tool calling |
-
-</details>
+- Correlation state is kept in process memory, so it is not shared automatically across multiple backend workers.
+- Signature rules operate on log-message regex matches and require tuning for real log sources.
+- AI playbooks can be generated locally as fallbacks and must not be presented as live model analysis when no provider is active.
+- Case auto-creation is disabled; escalation is intentionally controlled by the analyst.
+- Dashboard and map content can include synthetic/demo values depending on the active data source.
+- SQLite is practical for local use but is not a substitute for a production security-data architecture.
 
 ---
 
-## Provider Policy Notice
+## 📚 Origin & Credits
 
-<details>
-<summary>Important: API keys vs subscription tokens</summary>
+This portfolio presentation preserves the history of the original open-source project while documenting the capabilities present in this codebase.
 
-Anthropic and Google have **banned** subscription-plan OAuth tokens (Claude Pro/Max, Google AI Ultra) in third-party tools. Using them will result in account suspension.
+- 🧬 **Original project:** [devbyjitendra/AI-Powered-SIEM](https://github.com/devbyjitendra/AI-Powered-SIEM)
+- 👨‍💻 **Original author:** Jitendra Kumar
+- 🎨 **Original demo media:** available under `frontend/assets/`
+- 📄 **License:** distributed under the [MIT License](LICENSE)
 
-**Always use pay-per-token API keys** from the provider's developer console, or route through **OpenRouter** (billing proxy, no ban risk).
-
-- **OpenRouter**: Single key, 300+ models, no restrictions
-- **Groq, Mistral, xAI, Together, Cerebras**: No restrictions reported
-
-</details>
+The eight visuals in `docs/images/` are new documentation concepts created for this repository. They do not replace original screenshots, source-level verification, or security testing.
 
 ---
 
-## Documentation
+## 🤝 Contributing
 
-**Start here**
+Contributions that improve detection quality, test coverage, secure defaults, observability, accessibility, or documentation are welcome.
 
-| Document | Description |
-|---|---|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture — pipeline, runtimes, MCP, control plane |
-| [QUICKSTART.md](docs/QUICKSTART.md) | Installation guide (under 15 minutes) |
-| [SCENARIOS.md](docs/SCENARIOS.md) | End-to-end attack scenarios you can replay |
+1. Fork the repository.
+2. Create a focused branch: `git checkout -b feature/your-improvement`.
+3. Add tests for behavior changes.
+4. Run backend and frontend checks.
+5. Commit with a clear message and open a pull request.
 
-**Operate**
-
-| Document | Description |
-|---|---|
-| [RUNTIME_API.md](docs/RUNTIME_API.md) | REST API reference |
-| [CLI_REFERENCE.md](docs/CLI_REFERENCE.md) | Command-line reference |
-| [POLICY_AND_APPROVALS.md](docs/POLICY_AND_APPROVALS.md) | Policy engine and approval workflow |
-| [SLACK_SOCKET_MODE.md](docs/SLACK_SOCKET_MODE.md) | Slack setup |
-| [OBSERVABILITY_EXPORT.md](docs/OBSERVABILITY_EXPORT.md) | Prometheus metrics and SOC KPIs |
-| [HEARTBEATS_AND_COST.md](docs/HEARTBEATS_AND_COST.md) | Heartbeat inference cost and event-driven tuning |
-| [EVIDENCE_PACK_SCHEMA.md](docs/EVIDENCE_PACK_SCHEMA.md) | Evidence pack format |
-| [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and fixes |
-
-**Deploy & integrate**
-
-| Document | Description |
-|---|---|
-| [AGENT_CONFIGURATION.md](docs/AGENT_CONFIGURATION.md) | Agent files, personas, and customization |
-| [AGENT_COMMUNICATION.md](docs/AGENT_COMMUNICATION.md) | Agent-to-runtime message flow |
-| [MCP_INTEGRATION.md](docs/MCP_INTEGRATION.md) | MCP server integration (55 tools) |
-| [TAILSCALE_MANDATORY.md](docs/TAILSCALE_MANDATORY.md) | Mandatory Tailscale network isolation |
-| [AIR_GAPPED_DEPLOYMENT.md](docs/AIR_GAPPED_DEPLOYMENT.md) | Offline deployment with Ollama |
-| [VLLM_DEPLOYMENT.md](docs/VLLM_DEPLOYMENT.md) | Self-hosted GPU inference with vLLM |
-| [HERMES_DEPLOYMENT.md](docs/HERMES_DEPLOYMENT.md) | Hermes Agent runtime (Nous Research) |
-| [NEMOCLAW_DEPLOYMENT.md](docs/NEMOCLAW_DEPLOYMENT.md) | NemoClaw on the NVIDIA stack (OpenShell, Nemotron, NIM) |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
+Please use synthetic, sanitized data in issues, tests, screenshots, and pull requests.
 
 ---
 
-## Contributing
+## 👨‍💻 Developer & Maintainer
 
-```bash
-cd runtime/autopilot-service
-npm install
-npm test   # 587 tests across 16 files, all passing
-```
+<div align="center">
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+<a href="https://github.com/AsadAliEng">
+  <img src="https://github.com/AsadAliEng.png?size=160" width="140" alt="Asad Ali GitHub profile">
+</a>
 
----
+### Asad Ali
 
-## Acknowledgments
+**Developer · Repository Maintainer**
 
-Huge thanks to [**@idrone3d**](https://github.com/idrone3d) for exceptionally thorough field testing of Wazuh Autopilot on real, self-hosted local hardware, and for the detailed findings and suggestions in [issue #33](https://github.com/gensecaihq/Wazuh-Autopilot/issues/33). That work directly drove several improvements, including:
-
-- **Heartbeat operational cost** — surfacing that timer-based heartbeats dominate idle inference on small local models and paid APIs, which led to relaxed defaults and the new [event-driven tuning guide](docs/HEARTBEATS_AND_COST.md).
-- **New alerts grouped into terminal cases** — a correctness bug where a fresh alert could be merged into an already-closed/executed case.
-- **Plan-expiry persistence** — expired plans that reverted to actionable after a restart.
-
-Community testing like this makes the project meaningfully better. Thank you. 🙏
-
----
-
-## Community
-
-- [GitHub Discussions](https://github.com/gensecaihq/Wazuh-Autopilot/discussions) — Questions, ideas, deployment help
-- [GitHub Issues](https://github.com/gensecaihq/Wazuh-Autopilot/issues) — Bug reports and feature requests
-
----
-
-## Related Projects
-
-| Project | Description |
-|---|---|
-| [Wazuh MCP Server](https://github.com/gensecaihq/Wazuh-MCP-Server) | MCP bridge for Wazuh API (55 tools, RBAC, audit logging) |
-| [OpenClaw](https://github.com/openclaw/openclaw) | AI agent framework powering the SOC agents |
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE)
-
----
-
-<p align="center">
-  <sub>Built by <a href="https://github.com/gensecaihq">GenSecAI</a></sub>
+<p>
+  <a href="https://github.com/AsadAliEng">
+    <img src="https://img.shields.io/badge/GitHub-AsadAliEng-181717?style=for-the-badge&logo=github" alt="GitHub profile">
+  </a>
+  <a href="mailto:asadali.cryptoeng@gmail.com">
+    <img src="https://img.shields.io/badge/Email-asadali.cryptoeng%40gmail.com-EA4335?style=for-the-badge&logo=gmail&logoColor=white" alt="Email Asad Ali">
+  </a>
 </p>
+
+| Detail | Information |
+|---|---|
+| 👤 **Name** | Asad Ali |
+| 💻 **GitHub** | [@AsadAliEng](https://github.com/AsadAliEng) |
+| 📧 **Email** | [asadali.cryptoeng@gmail.com](mailto:asadali.cryptoeng@gmail.com) |
+
+<sub>Open to cybersecurity engineering, AI safety, and defensive automation collaboration.</sub>
+
+</div>
+
+---
+
+<div align="center">
+
+## ⭐ AI-Powered SIEM Threat Correlation Engine
+
+**Observe the signal · Correlate the behavior · Keep humans in control**
+
+Built for transparent threat detection, reproducible security research, and analyst-led response.
+
+<sub>If this project supports your learning or portfolio, consider starring the repository.</sub>
+
+</div>
