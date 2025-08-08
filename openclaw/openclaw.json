@@ -261,35 +261,36 @@
   // ---------------------------------------------------------------------------
   "hooks": {
     "enabled": true,
+    "path": "/webhook",
     "token": "${OPENCLAW_TOKEN}",
     "mappings": [
       {
-        "match": { "path": "/webhook/wazuh-alert" },
+        "match": { "path": "wazuh-alert" },
         "action": "agent",
         "agentId": "wazuh-triage"
       },
       {
-        "match": { "path": "/webhook/case-created" },
+        "match": { "path": "case-created" },
         "action": "agent",
         "agentId": "wazuh-correlation"
       },
       {
-        "match": { "path": "/webhook/investigation-request" },
+        "match": { "path": "investigation-request" },
         "action": "agent",
         "agentId": "wazuh-investigation"
       },
       {
-        "match": { "path": "/webhook/plan-request" },
+        "match": { "path": "plan-request" },
         "action": "agent",
         "agentId": "wazuh-response-planner"
       },
       {
-        "match": { "path": "/webhook/policy-check" },
+        "match": { "path": "policy-check" },
         "action": "agent",
         "agentId": "wazuh-policy-guard"
       },
       {
-        "match": { "path": "/webhook/execute-action" },
+        "match": { "path": "execute-action" },
         "action": "agent",
         "agentId": "wazuh-responder"
       }

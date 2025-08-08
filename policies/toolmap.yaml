@@ -1,6 +1,6 @@
 # Wazuh Autopilot - MCP Tool Mapping Configuration
-# Maps logical operations to actual MCP tool names on Wazuh-MCP-Server v4.0.6
-# Version: 2.0.0
+# Maps logical operations to actual MCP tool names on Wazuh-MCP-Server v4.0.7
+# Version: 2.1.0
 
 schema_version: "2.0"
 description: |
@@ -678,17 +678,185 @@ action_operations:
         description: "agent ID or 'manager'"
 
 # =============================================================================
+# VERIFICATION OPERATIONS — Confirm action outcomes
+# These tools verify that an action (block, isolate, kill, etc.) succeeded.
+# Referenced inline in action_operations above via verification.tool keys.
+# =============================================================================
+verification_operations:
+  check_blocked_ip:
+    logical_name: check_blocked_ip
+    mcp_tool: wazuh_check_blocked_ip
+    description: "Check if an IP address is currently blocked via firewall-drop"
+    required: false
+    parameters:
+      - name: ip_address
+        type: string
+        required: true
+        description: "IP address to check"
+      - name: agent_id
+        type: string
+        required: false
+        description: "Filter by agent ID"
+    response_fields:
+      - blocked
+
+  check_agent_isolation:
+    logical_name: check_agent_isolation
+    mcp_tool: wazuh_check_agent_isolation
+    description: "Check if an agent is currently isolated from the network"
+    required: false
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent to check"
+    response_fields:
+      - isolated
+
+  check_process:
+    logical_name: check_process
+    mcp_tool: wazuh_check_process
+    description: "Check if a specific process is running on an agent"
+    required: false
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent"
+      - name: process_id
+        type: integer
+        required: true
+        description: "PID to check"
+    response_fields:
+      - running
+
+  check_user_status:
+    logical_name: check_user_status
+    mcp_tool: wazuh_check_user_status
+    description: "Check if a user account is disabled on an agent"
+    required: false
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent"
+      - name: username
+        type: string
+        required: true
+        description: "Username to check"
+    response_fields:
+      - disabled
+
+  check_file_quarantine:
+    logical_name: check_file_quarantine
+    mcp_tool: wazuh_check_file_quarantine
+    description: "Check if a file has been quarantined on an agent"
+    required: false
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent"
+      - name: file_path
+        type: string
+        required: true
+        description: "Path of the file to check"
+    response_fields:
+      - quarantined
+
+# =============================================================================
+# ROLLBACK OPERATIONS — Reverse completed actions
+# These tools undo previously executed actions (unisolate, re-enable, etc.).
+# Referenced inline in action_operations above via rollback.tool keys.
+# =============================================================================
+rollback_operations:
+  unisolate_host:
+    logical_name: unisolate_host
+    mcp_tool: wazuh_unisolate_host
+    description: "Remove host network isolation (reversal of isolate_host)"
+    required: false
+    enabled: false
+    risk_level: medium
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent to unisolate"
+
+  enable_user:
+    logical_name: enable_user
+    mcp_tool: wazuh_enable_user
+    description: "Re-enable a disabled user account (reversal of disable_user)"
+    required: false
+    enabled: false
+    risk_level: high
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent"
+      - name: username
+        type: string
+        required: true
+        description: "Username to re-enable"
+
+  restore_file:
+    logical_name: restore_file
+    mcp_tool: wazuh_restore_file
+    description: "Restore a quarantined file (reversal of quarantine_file)"
+    required: false
+    enabled: false
+    risk_level: low
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent"
+      - name: file_path
+        type: string
+        required: true
+        description: "Path of the file to restore"
+
+  firewall_allow:
+    logical_name: firewall_allow
+    mcp_tool: wazuh_firewall_allow
+    description: "Remove a firewall drop rule (reversal of firewall_drop)"
+    required: false
+    enabled: false
+    risk_level: medium
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent"
+      - name: src_ip
+        type: string
+        required: true
+        description: "Source IP to unblock"
+
+  host_allow:
+    logical_name: host_allow
+    mcp_tool: wazuh_host_allow
+    description: "Remove a hosts.deny entry (reversal of host_deny)"
+    required: false
+    enabled: false
+    risk_level: medium
+    parameters:
+      - name: agent_id
+        type: string
+        required: true
+        description: "ID of the agent"
+      - name: src_ip
+        type: string
+        required: true
+        description: "Source IP to allow"
+
+# =============================================================================
 # UTILITY OPERATIONS
 # =============================================================================
 utility_operations:
-  list_tools:
-    logical_name: list_tools
-    mcp_tool: mcp_list_tools
-    description: "List all available MCP tools"
-    required: false
-    parameters: []
-    response_fields:
-      - tools
+  # Note: Tool listing uses the MCP protocol method 'tools/list', not a tool call.
+  # Use validate_wazuh_connection below for connectivity checks.
 
   health_check:
     logical_name: health_check
