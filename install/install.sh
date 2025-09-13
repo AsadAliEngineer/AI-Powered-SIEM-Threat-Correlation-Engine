@@ -176,7 +176,7 @@ parse_args() {
     done
 
     # Read AUTOPILOT_MODE from environment (CLI --mode takes precedence)
-    if [[ "$INSTALL_MODE" == "full" && -n "${AUTOPILOT_MODE:-}" ]]; then
+    if [[ "$INSTALL_MODE" == "full" && "$EXPLICIT_MODE" == "false" && -n "${AUTOPILOT_MODE:-}" ]]; then
         case "${AUTOPILOT_MODE}" in
             bootstrap)
                 INSTALL_MODE="bootstrap"
@@ -946,7 +946,7 @@ deploy_agents() {
 
   "channels": {
     "slack": {
-      "enabled": true,
+      "enabled": __SLACK_ENABLED__,
       "botToken": "__SLACK_BOT_TOKEN__",
       "appToken": "__SLACK_APP_TOKEN__",
       "dmPolicy": "open",
@@ -1308,7 +1308,7 @@ MCP_AUTH_MODE=mcp-jsonrpc
 OPENCLAW_GATEWAY_URL=http://__GATEWAY_BIND__:__GATEWAY_PORT__
 
 # APPROVAL SYSTEM
-AUTOPILOT_TOKEN_TTL_MINUTES=60
+APPROVAL_TOKEN_TTL_MINUTES=60
 
 # PAIRING MODE
 AUTOPILOT_PAIRING_CODE=__PAIRING_SECRET__
@@ -1423,6 +1423,13 @@ ENVEOF
         _safe_subst "__MCP_AUTH_TOKEN__" "MCP_AUTH_TOKEN" "$_ocjson"
         _safe_subst "__SLACK_BOT_TOKEN__" "SLACK_BOT_TOKEN" "$_ocjson"
         _safe_subst "__SLACK_APP_TOKEN__" "SLACK_APP_TOKEN" "$_ocjson"
+
+        # Set Slack enabled based on whether tokens are configured
+        if [[ -n "${SLACK_BOT_TOKEN:-}" && -n "${SLACK_APP_TOKEN:-}" ]]; then
+            sed -i "s/__SLACK_ENABLED__/true/" "$_ocjson"
+        else
+            sed -i "s/__SLACK_ENABLED__/false/" "$_ocjson"
+        fi
 
         # Substitute additional provider API keys (empty string if not set)
         for _provider_key in OPENAI_API_KEY GOOGLE_API_KEY GROQ_API_KEY MISTRAL_API_KEY XAI_API_KEY OPENROUTER_API_KEY TOGETHER_API_KEY CEREBRAS_API_KEY; do

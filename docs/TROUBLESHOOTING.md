@@ -130,7 +130,7 @@ All 6 mappings need these fields: `wazuh-alert`, `case-created`, `investigation-
 
 ```bash
 curl -X POST http://127.0.0.1:18789/webhook/wazuh-alert \
-  -H "Authorization: Bearer ${OPENCLAW_TOKEN}" \
+  -H "Authorization: Bearer ${OPENCLAW_WEBHOOK_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"message": "Test alert from diagnostic"}'
 ```
@@ -432,7 +432,8 @@ sudo ./install/install.sh
 **Check agent files exist:**
 ```bash
 ls ~/.openclaw/wazuh-autopilot/agents/triage/
-# Expected: AGENTS.md IDENTITY.md TOOLS.md MEMORY.md HEARTBEAT.md SOUL.md USER.md
+# Expected: AGENTS.md IDENTITY.md TOOLS.md MEMORY.md (HEARTBEAT.md for triage/correlation/reporting)
+# Shared files in: ~/.openclaw/wazuh-autopilot/agents/_shared/ (SOUL.md USER.md)
 ```
 
 ### Agents not loading in OpenClaw

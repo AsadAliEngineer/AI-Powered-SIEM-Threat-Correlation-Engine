@@ -3384,11 +3384,26 @@ const cleanupIntervals = [];
 async function validateStartup() {
   log("info", "startup", "Validating configuration...");
 
+  // Validate AUTOPILOT_MODE
+  const VALID_MODES = ["bootstrap", "production"];
+  if (!VALID_MODES.includes(config.mode)) {
+    log("error", "startup", `Invalid AUTOPILOT_MODE: "${config.mode}" — must be one of: ${VALID_MODES.join(", ")}`);
+    process.exit(1);
+  }
+
   // Reject known placeholder auth tokens
   const KNOWN_PLACEHOLDERS = ["your-mcp-auth-token", "your-openclaw-gateway-token", "changeme", "test"];
-  if (config.mcpAuth && KNOWN_PLACEHOLDERS.includes(config.mcpAuth)) {
-    log("error", "startup", "AUTOPILOT_MCP_AUTH is set to a known placeholder value — change it before running");
-    process.exit(1);
+  const tokensToCheck = [
+    ["AUTOPILOT_MCP_AUTH", config.mcpAuth],
+    ["OPENCLAW_TOKEN", config.openclawToken],
+    ["OPENCLAW_WEBHOOK_TOKEN", config.openclawWebhookToken],
+    ["AUTOPILOT_SERVICE_TOKEN", process.env.AUTOPILOT_SERVICE_TOKEN],
+  ];
+  for (const [name, value] of tokensToCheck) {
+    if (value && KNOWN_PLACEHOLDERS.includes(value)) {
+      log("error", "startup", `${name} is set to a known placeholder value — change it before running`);
+      process.exit(1);
+    }
   }
 
   // Warn if no auth tokens configured
@@ -3422,25 +3437,17 @@ async function validateStartup() {
   await ensureDir(path.join(config.dataDir, "reports"));
   await ensureDir(path.join(config.dataDir, "state"));
 
-  // Load and validate policy configuration
+  // Load toolmap
+  await loadToolmap();
+
+  // Load and validate policy configuration (single read, no TOCTOU gap)
   // Issue #10 fix: Fail fast in production mode if policy is missing or invalid
   const policyPath = path.join(config.configDir, "policies", "policy.yaml");
   try {
-    await fs.access(policyPath);
     const policyContent = await fs.readFile(policyPath, "utf8");
 
-    // Validate YAML syntax by attempting to parse
-    try {
-      parseSimpleYaml(policyContent);
-    } catch (parseErr) {
-      log("error", "startup", "Policy file contains invalid YAML", { path: policyPath, error: parseErr.message });
-      if (config.mode === "production") {
-        process.exit(1);
-      }
-    }
-
-    // Simple placeholder check (in production, parse YAML properly)
-    const placeholderMatches = policyContent.match(/(<SLACK_[A-Z_]+>|YOUR_|USER_ID_|ADMIN_USER_ID|_CHANNEL_ID)/g);
+    // Check for angle-bracket placeholders (e.g., <SLACK_WORKSPACE_ID>, <SLACK_CHANNEL_ALERTS>)
+    const placeholderMatches = policyContent.match(/<[A-Z][A-Z_]+>/g);
     if (placeholderMatches && placeholderMatches.length > 0) {
       log("warn", "startup", "Policy contains placeholder values - configure before production use", {
         placeholders_found: placeholderMatches.length,
@@ -3453,20 +3460,17 @@ async function validateStartup() {
         process.exit(1);
       }
     }
+
+    // Parse once for both validation and runtime use
+    policyConfig = parseSimpleYaml(policyContent);
+    log("info", "policy", "Policy config loaded", { path: policyPath });
   } catch (err) {
-    // Issue #10 fix: In production, policy file must exist and be valid
     if (config.mode === "production") {
       log("error", "startup", "Production mode requires valid policy file", { path: policyPath, error: err.message });
       process.exit(1);
     }
     log("warn", "startup", "Could not validate policy file", { path: policyPath, error: err.message });
   }
-
-  // Load toolmap
-  await loadToolmap();
-
-  // Load policy config for inline enforcement
-  await loadPolicyConfig();
 
   // Validate numeric configuration values
   const numericConfigs = [
