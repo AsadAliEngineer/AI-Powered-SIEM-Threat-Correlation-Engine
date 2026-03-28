@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-02-27
+
+### Fixed
+- **`--skip-tailscale` set `AUTOPILOT_MODE=production`**: The `--skip-tailscale` flag didn't change `INSTALL_MODE` from `"full"`, so the generated `.env` always got `AUTOPILOT_MODE=production`. Production mode rejects Slack placeholder values in `policy.yaml`, causing the runtime to fail on startup with `"Production mode cannot use placeholder values in policy"`. Now `--skip-tailscale` implies bootstrap mode unless `--mode full` is explicitly passed.
+- **Missing `gateway.mode=local`**: OpenClaw v2026.2.17 requires `gateway.mode` to be set — without it the gateway refuses to start with `"Gateway start blocked: set gateway.mode=local"`. Added `"mode": "local"` to both reference configs (`openclaw.json`, `openclaw-airgapped.json`) and the installer-generated config. Corrected previous advice in issue #1 that incorrectly recommended removing this key.
+
 ## [2.4.2] - 2026-02-27
 
 ### Fixed
@@ -185,7 +191,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Responder Agent
   - Reporting Agent
 
-[Unreleased]: https://github.com/gensecaihq/Wazuh-Openclaw-Autopilot/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/gensecaihq/Wazuh-Openclaw-Autopilot/compare/v2.4.3...HEAD
+[2.4.3]: https://github.com/gensecaihq/Wazuh-Openclaw-Autopilot/compare/v2.4.2...v2.4.3
+[2.4.2]: https://github.com/gensecaihq/Wazuh-Openclaw-Autopilot/compare/v2.4.0...v2.4.2
 [2.4.0]: https://github.com/gensecaihq/Wazuh-Openclaw-Autopilot/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/gensecaihq/Wazuh-Openclaw-Autopilot/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/gensecaihq/Wazuh-Openclaw-Autopilot/compare/v2.1.0...v2.2.0

@@ -51,6 +51,7 @@ RUNTIME_PORT="9090"
 # Flags (set by parse_args or environment)
 SKIP_TAILSCALE=false
 INSTALL_MODE="full"  # full | bootstrap | mcp-only
+EXPLICIT_MODE=false  # true if --mode was explicitly passed
 
 # Colors
 RED='\033[0;31m'
@@ -136,6 +137,7 @@ parse_args() {
                 shift
                 ;;
             --mode)
+                EXPLICIT_MODE=true
                 shift
                 case "${1:-}" in
                     full)
@@ -193,6 +195,13 @@ parse_args() {
     if [[ "${AUTOPILOT_REQUIRE_TAILSCALE:-true}" == "false" ]]; then
         SKIP_TAILSCALE=true
         log_info "AUTOPILOT_REQUIRE_TAILSCALE=false detected — Tailscale will be skipped"
+    fi
+
+    # --skip-tailscale without explicit --mode implies bootstrap
+    # (anyone skipping Tailscale is not running full production)
+    if [[ "$SKIP_TAILSCALE" == "true" && "$INSTALL_MODE" == "full" && "$EXPLICIT_MODE" == "false" ]]; then
+        INSTALL_MODE="bootstrap"
+        log_info "--skip-tailscale implies bootstrap mode (use --mode full to override)"
     fi
 }
 
@@ -806,6 +815,7 @@ deploy_agents() {
 {
   "gateway": {
     "port": $GATEWAY_PORT,
+    "mode": "local",
     "bind": "loopback",
     "auth": {
       "mode": "token",

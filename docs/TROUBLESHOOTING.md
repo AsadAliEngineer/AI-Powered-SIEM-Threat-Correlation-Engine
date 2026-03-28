@@ -89,6 +89,23 @@ In production mode, MCP_URL must be a Tailnet address.
    sudo systemctl restart wazuh-autopilot
    ```
 
+### "Production mode cannot use placeholder values in policy"
+
+The runtime refuses to start in production mode if `policies/policy.yaml` contains Slack placeholder values (`<SLACK_WORKSPACE_ID>`, `<SLACK_CHANNEL_*>`, `<SLACK_USER_*>`).
+
+**If you're not using Slack**, switch to bootstrap mode:
+
+```bash
+# In /etc/wazuh-autopilot/.env
+AUTOPILOT_MODE=bootstrap
+```
+
+Bootstrap mode warns about placeholders but doesn't block startup. All core functionality (alert triage, correlation, investigation, response planning, REST API approvals) works normally without Slack.
+
+**If you installed with `--skip-tailscale`**, the installer (v2.4.3+) now automatically sets `AUTOPILOT_MODE=bootstrap`. Older installations may have `AUTOPILOT_MODE=production` set incorrectly — change it to `bootstrap` in your `.env`.
+
+**If you are using Slack**, replace all `<PLACEHOLDER>` values in `policies/policy.yaml` with your actual Slack workspace, channel, and user IDs before running in production mode. See the comments in `policy.yaml` for instructions on finding these IDs.
+
 ## OpenClaw Webhook Issues
 
 ### 400 "hook mapping requires message"
@@ -219,9 +236,26 @@ If `web_fetch` is only in agent allow lists but missing from the global allow li
 journalctl -u openclaw-gateway | grep "unknown entries"
 ```
 
-### Unknown keys cause OpenClaw startup failure
+### Gateway start blocked: `set gateway.mode=local`
 
-OpenClaw validates its config with a strict zod schema. Unknown keys like `"mode": "local"` in the `gateway` section will cause validation errors. Only use keys documented in the reference templates (`openclaw.json` and `openclaw-airgapped.json`).
+OpenClaw v2026.2.17 requires `gateway.mode` to be set. Without it, the gateway refuses to start:
+
+```
+Gateway start blocked: set gateway.mode=local (current: unset) or pass --allow-unconfigured.
+```
+
+**Fix:** Ensure your `openclaw.json` gateway section includes `"mode": "local"`:
+
+```json
+"gateway": {
+  "port": 18789,
+  "mode": "local",
+  "bind": "loopback",
+  "auth": { ... }
+}
+```
+
+This is included in both reference templates (`openclaw.json` and `openclaw-airgapped.json`) as of v2.4.3.
 
 ---
 
