@@ -92,6 +92,10 @@ autopilot_responder_disabled_blocks_total
 autopilot_policy_denies_total{reason="INSUFFICIENT_EVIDENCE"}
 autopilot_policy_denies_total{reason="APPROVER_NOT_AUTHORIZED"}
 autopilot_policy_denies_total{reason="ACTION_NOT_ALLOWED"}
+autopilot_policy_denies_total{reason="time_window_denied"}
+autopilot_policy_denies_total{reason="action_rate_limited"}
+autopilot_policy_denies_total{reason="global_rate_limited"}
+autopilot_policy_denies_total{reason="duplicate_action"}
 ```
 
 #### Webhook Dispatch Metrics
@@ -193,6 +197,11 @@ sum(rate(autopilot_mcp_tool_calls_total[5m]))
 **Policy deny breakdown:**
 ```promql
 sum by (reason) (rate(autopilot_policy_denies_total[1h]))
+```
+
+**Rate limit denials:**
+```promql
+sum by (reason) (rate(autopilot_policy_denies_total{reason=~".*rate_limited|duplicate_action|time_window_denied"}[1h]))
 ```
 
 **Webhook dispatch success rate:**
@@ -412,6 +421,14 @@ groups:
           severity: warning
         annotations:
           summary: "High policy denial rate"
+
+      - alert: AutopilotRateLimitDenials
+        expr: sum(rate(autopilot_policy_denies_total{reason=~".*rate_limited"}[15m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Actions being rate limited — possible automation storm"
 
       - alert: AutopilotServiceDown
         expr: up{job="wazuh-autopilot"} == 0

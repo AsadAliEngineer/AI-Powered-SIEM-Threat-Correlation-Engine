@@ -77,7 +77,7 @@
 | **IP Enrichment** | Automatic AbuseIPDB lookups on public IPs with TTL caching |
 | **Incident Correlation** | Automatically link related alerts into unified cases with attack timelines |
 | **Response Planning** | Generate risk-assessed response plans with recommended Wazuh Active Response actions |
-| **Policy Enforcement** | Inline enforcement of action allowlists, approver authorization, confidence thresholds, and evidence requirements |
+| **Policy Enforcement** | Inline enforcement of action allowlists, approver authorization, confidence thresholds, evidence requirements, time windows, rate limits, and idempotency |
 | **Human-in-the-Loop** | Two-tier approval workflow ensures humans authorize every response action |
 | **False Positive Feedback** | Analysts submit verdicts (true/false positive) that refine future alert grouping |
 | **Webhook Orchestration** | Status-driven agent handoffs via fire-and-forget webhook dispatch to OpenClaw Gateway |
@@ -139,8 +139,9 @@ Alert Ingestion ──▶ Triage ──▶ Correlation ──▶ Investigation
      │        Response Planner ──▶ Policy Enforcement ──▶ Human Approval ──▶ Responder
      │                                  (inline)              │
      │                             action allowlist     [Approve] [Execute]
-     │                             approver auth        evidence check
-     │                             evidence check
+     │                             time windows         evidence check
+     │                             approver auth        rate limits
+     │                             evidence check       idempotency
      ▼
   Webhook ──▶ OpenClaw Gateway ──▶ Agent
 ```
@@ -218,7 +219,9 @@ Every response action requires explicit human authorization through a two-tier w
         ▼                        ▼                        ▼
   Policy Check:            Policy Check:            Policy Check:
   action allowlist         approver authorized      evidence sufficient
-  confidence threshold     risk level permitted     min items met
+  confidence threshold     risk level permitted     time window check
+  time window check                                 rate limit check
+                                                    idempotency check
 ```
 
 **AI agents cannot execute actions autonomously.** The responder capability is disabled by default and requires explicit enablement plus human approval for every action. Policy enforcement is applied inline at each step — fail-closed in production mode, fail-open in bootstrap mode.
@@ -419,6 +422,9 @@ autopilot_feedback_submitted_total{verdict="..."}
 
 # Policy
 autopilot_policy_denies_total{reason="..."}
+# reason labels: ACTION_NOT_ALLOWED, APPROVER_NOT_AUTHORIZED,
+# INSUFFICIENT_EVIDENCE, time_window_denied, action_rate_limited,
+# global_rate_limited, duplicate_action
 autopilot_errors_total{component="..."}
 ```
 
@@ -507,9 +513,9 @@ Features:
 │   └── agents/                 # 7 SOC agents + _shared/ (AGENTS.md, IDENTITY.md, TOOLS.md, HEARTBEAT.md, MEMORY.md)
 ├── runtime/autopilot-service/
 │   ├── Dockerfile              # Production container
-│   ├── index.js                # Main service (3500+ LOC)
+│   ├── index.js                # Main service (4100+ LOC)
 │   ├── slack.js                # Slack Socket Mode integration
-│   └── *.test.js               # Test suite (255 tests)
+│   └── *.test.js               # Test suite (276 tests)
 ├── policies/
 │   ├── policy.yaml             # Security policies & approvers
 │   └── toolmap.yaml            # MCP tool mappings

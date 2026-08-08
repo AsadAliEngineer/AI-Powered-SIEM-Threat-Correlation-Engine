@@ -1,6 +1,6 @@
 # Runtime API Reference
 
-The Wazuh Autopilot Runtime Service (v2.3.0) provides a REST API for case management, response plan approval workflow, alert ingestion, IP enrichment, alert grouping, analyst feedback, metrics, health monitoring, and webhook-driven agent orchestration.
+The Wazuh Autopilot Runtime Service provides a REST API for case management, response plan approval workflow, alert ingestion, IP enrichment, alert grouping, analyst feedback, policy enforcement (time windows, rate limits, idempotency), metrics, health monitoring, and webhook-driven agent orchestration.
 
 ## Base URL
 
@@ -407,7 +407,7 @@ Create a new response plan in `proposed` state. Requires `write` scope. Typicall
 
 Required fields: `case_id`, `actions` (non-empty array). Each action must have `action` and `target`.
 
-> **Policy Enforcement:** Each action in the plan is validated against the action allowlist in `policies/policy.yaml`. Actions must be `enabled`, and the plan's confidence must meet the action's `min_confidence` threshold. Unlisted actions are denied when `deny_unlisted: true`. Returns `400` if policy denies an action.
+> **Policy Enforcement:** Before creating the plan, the runtime checks the `response_planning` time window (if `time_windows.enabled: true`). Then each action is validated against the action allowlist in `policies/policy.yaml` — actions must be `enabled` and must meet the `min_confidence` threshold. Unlisted actions are denied when `deny_unlisted: true`. Returns `400` if any policy check denies the plan.
 
 **Response:** `201 Created`
 ```json
@@ -509,6 +509,7 @@ Required fields: `executor_id`.
   "execution_result": {
     "total_actions": 1,
     "succeeded": 1,
+    "denied": 0,
     "failed": 0,
     "results": [...]
   },
@@ -516,9 +517,11 @@ Required fields: `executor_id`.
 }
 ```
 
+> **Policy enforcement during execution:** Before the action loop, the runtime checks the `action_execution` time window — if denied, the entire plan is marked FAILED. Within the loop, each action is checked for **idempotency** (duplicate action+target within `window_minutes`) and **rate limits** (per-action and global hourly/daily). Denied actions are skipped with `status: "denied"` and a `reason` field; the plan continues with remaining actions. Counters are only incremented after successful MCP tool calls.
+
 **Errors:**
 - `403`: Responder capability is disabled, approver not authorized (policy check), or insufficient evidence (policy check)
-- `400`: Plan not in `approved` state, or plan has expired
+- `400`: Plan not in `approved` state, plan has expired, or time window denied
 - `404`: Plan not found
 
 ---

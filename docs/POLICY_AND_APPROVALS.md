@@ -16,13 +16,14 @@ Policy enforcement operates at **two levels**:
 
 ### 1. Runtime-Level (Inline) — Primary
 
-The Runtime Service enforces `policies/policy.yaml` at three critical points:
+The Runtime Service enforces `policies/policy.yaml` at six critical points:
 
 | Enforcement Point | API Endpoint | What's Checked |
 |-------------------|-------------|----------------|
-| **Plan Creation** | `POST /api/plans` | Each action validated against `actions.allowlist` — must be `enabled`, must meet `min_confidence` |
+| **Plan Creation** | `POST /api/plans` | Each action validated against `actions.allowlist` — must be `enabled`, must meet `min_confidence`. Time window check for `response_planning` operation. |
 | **Plan Approval** | `POST /api/plans/:id/approve` | Approver validated against `approvers.groups` — must have action in `can_approve`, risk level must be within `max_risk_level` |
-| **Plan Execution** | `POST /api/plans/:id/execute` | Evidence count validated against `min_evidence_items` for each action type |
+| **Plan Execution (pre-loop)** | `POST /api/plans/:id/execute` | Evidence count validated against `min_evidence_items`. Time window check for `action_execution` operation — denies entire plan if outside window. |
+| **Plan Execution (per-action)** | `POST /api/plans/:id/execute` | Each action checked for **idempotency** (duplicate action+target within window) and **rate limits** (per-action and global hourly/daily). Denied actions are skipped individually. |
 
 **Fail modes:**
 - **Production mode** (`AUTOPILOT_MODE=production`): Fail-closed — denies if policy cannot be loaded
@@ -240,11 +241,11 @@ thresholds:
 
 ### Time Windows (Optional)
 
-Restrict actions to certain times:
+Restrict operations to certain times. **Enforced at runtime** — the runtime checks `policyCheckTimeWindow()` before plan creation and execution.
 
 ```yaml
 time_windows:
-  enabled: true
+  enabled: true  # false by default — set to true to activate
 
   operations:
     action_execution:
@@ -253,12 +254,94 @@ time_windows:
           start: "06:00"
           end: "22:00"
           timezone: UTC
-      outside_window_action: deny
+      outside_window_action: deny  # "deny" blocks, "allow" permits
+
+    response_planning:
+      windows:
+        - days: [mon, tue, wed, thu, fri, sat, sun]
+          start: "00:00"
+          end: "23:59"
+          timezone: UTC
+      outside_window_action: allow
 
   emergency_override:
     enabled: true
     requires_approver_group: admin
+    max_duration_hours: 4
 ```
+
+**Enforcement behavior:**
+- `response_planning` is checked during `POST /api/plans` (plan creation). If denied, the plan is not created and the API returns 400.
+- `action_execution` is checked during `POST /api/plans/:id/execute` (before the action loop). If denied, the entire plan is marked FAILED — no actions execute.
+- When `outside_window_action: allow`, operations outside the window are permitted with a log warning.
+- When `time_windows.enabled: false` (the default), all time window checks are no-ops.
+
+### Rate Limits
+
+Control how many actions can execute per time period. **Enforced at runtime** — the runtime checks `policyCheckActionRateLimit()` before each action in the execution loop.
+
+```yaml
+rate_limits:
+  # Per-action rate limits
+  actions:
+    block_ip:
+      max_per_hour: 100
+      max_per_day: 500
+    isolate_host:
+      max_per_hour: 20
+      max_per_day: 50
+    disable_user:
+      max_per_hour: 10
+      max_per_day: 30
+
+  # Global rate limits (across all action types)
+  global:
+    max_actions_per_hour: 200
+    max_actions_per_day: 1000
+```
+
+**Enforcement behavior:**
+- Counters increment **only after successful** MCP tool execution (failed actions don't consume budget)
+- Per-action and global limits are checked independently — either can deny
+- When a rate limit is exceeded, the individual action is skipped with `status: "denied"` in the execution results; the plan continues with remaining actions
+- Counter windows auto-reset when they expire (hourly/daily)
+- Stale counter entries are evicted every 5 minutes
+- Actions not listed in `rate_limits.actions` are still subject to global limits
+
+### Idempotency / Duplicate Detection
+
+Prevent the same action from executing repeatedly on the same target. **Enforced at runtime** — the runtime checks `policyCheckIdempotency()` before each action in the execution loop.
+
+```yaml
+idempotency:
+  enabled: true  # true by default
+
+  # State checks (declarative labels for documentation)
+  checks:
+    block_ip:
+      check_method: verify_ip_not_blocked
+      deny_if_exists: true
+      deny_reason: ALREADY_BLOCKED
+    isolate_host:
+      check_method: verify_host_not_isolated
+      deny_if_exists: true
+      deny_reason: ALREADY_ISOLATED
+
+  # Duplicate request detection (enforced at runtime)
+  duplicate_detection:
+    enabled: true
+    window_minutes: 60     # Deny same action+target within this window
+    deny_reason: DUPLICATE_REQUEST
+```
+
+**Enforcement behavior:**
+- The runtime tracks `action_type:target` pairs with timestamps
+- If the same action+target was successfully executed within `window_minutes`, the action is denied with `DUPLICATE_REQUEST`
+- Different targets for the same action type are allowed (e.g., `block_ip:10.0.0.1` and `block_ip:10.0.0.2` are independent)
+- Denied actions are skipped individually with `status: "denied"` — the plan continues
+- Dedup entries are recorded **only after successful** execution
+- Stale entries are evicted every 5 minutes
+- Maximum 10,000 dedup entries tracked (LRU eviction)
 
 ## Approval Workflow
 
@@ -288,9 +371,10 @@ The Runtime Service enforces policy rules before the plan is stored:
 
 ```
 Inline Enforcement (plan creation):
-1. ✓ Action allowlist (block_ip enabled)
-2. ✓ Confidence threshold (0.85 >= 0.7)
-3. ✓ deny_unlisted check (action is listed)
+1. ✓ Time window check (response_planning within allowed hours)
+2. ✓ Action allowlist (block_ip enabled)
+3. ✓ Confidence threshold (0.85 >= 0.7)
+4. ✓ deny_unlisted check (action is listed)
 
 Result: ALLOW (plan created, webhook dispatched to Policy Guard)
 ```
@@ -303,13 +387,13 @@ The Policy Guard agent receives a webhook and performs LLM-based analysis:
 Supplementary Analysis:
 1. ✓ Asset criticality (dev system, standard ok)
 2. ✓ Evidence threshold (3 items >= 2 required)
-3. ✓ Time window (within allowed hours)
-4. ✓ Idempotency (IP not already blocked)
-5. ✓ Blast radius assessment
-6. ✓ Context-aware risk evaluation
+3. ✓ Blast radius assessment
+4. ✓ Context-aware risk evaluation
 
 Result: ADVISORY — findings added to case
 ```
+
+> **Note:** Time window, rate limit, and idempotency checks are now enforced by the Runtime Service (not the Policy Guard agent). The Policy Guard provides supplementary LLM analysis only.
 
 ### 3. Approval Request Posted
 
@@ -382,30 +466,34 @@ If the Responder agent is enabled:
 
 Every policy denial includes a structured reason code:
 
-| Code | Description |
-|------|-------------|
-| `WORKSPACE_NOT_ALLOWED` | Slack workspace not in allowlist |
-| `CHANNEL_NOT_ALLOWED` | Slack channel not in allowlist |
-| `APPROVER_NOT_AUTHORIZED` | Approver lacks permission for this action |
-| `ACTION_NOT_ALLOWED` | Action type not in allowlist |
-| `CRITICAL_ASSET_ELEVATED_APPROVAL` | Critical asset requires admin approval |
-| `INSUFFICIENT_EVIDENCE` | Not enough evidence items |
-| `LOW_CONFIDENCE` | Confidence score below threshold |
-| `OUTSIDE_TIME_WINDOW` | Action outside allowed hours |
-| `ALREADY_EXECUTED` | Action already performed (idempotency) |
-| `DUPLICATE_REQUEST` | Same request within cooldown window |
-| `EXPIRED_APPROVAL` | Approval token has expired |
-| `INVALID_APPROVAL_TOKEN` | Token is invalid or malformed |
+| Code | Description | Enforcement Level |
+|------|-------------|-------------------|
+| `WORKSPACE_NOT_ALLOWED` | Slack workspace not in allowlist | Slack layer |
+| `CHANNEL_NOT_ALLOWED` | Slack channel not in allowlist | Slack layer |
+| `APPROVER_NOT_AUTHORIZED` | Approver lacks permission for this action | Runtime (plan approval) |
+| `ACTION_NOT_ALLOWED` | Action type not in allowlist | Runtime (plan creation) |
+| `CRITICAL_ASSET_ELEVATED_APPROVAL` | Critical asset requires admin approval | Policy Guard (advisory) |
+| `INSUFFICIENT_EVIDENCE` | Not enough evidence items | Runtime (plan execution) |
+| `LOW_CONFIDENCE` | Confidence score below threshold | Runtime (plan creation) |
+| `time_window_denied` | Operation outside allowed hours | Runtime (plan creation/execution) |
+| `action_rate_limited` | Per-action hourly/daily limit exceeded | Runtime (per-action execution) |
+| `global_rate_limited` | Global hourly/daily limit exceeded | Runtime (per-action execution) |
+| `duplicate_action` | Same action+target within dedup window | Runtime (per-action execution) |
+| `EXPIRED_APPROVAL` | Approval token has expired | Runtime |
+| `INVALID_APPROVAL_TOKEN` | Token is invalid or malformed | Runtime |
 
 ## Metrics
 
 Policy decisions are tracked via Prometheus metrics:
 
 ```
-autopilot_policy_evaluations_total
-autopilot_policy_allows_total
 autopilot_policy_denies_total{reason="INSUFFICIENT_EVIDENCE"}
 autopilot_policy_denies_total{reason="APPROVER_NOT_AUTHORIZED"}
+autopilot_policy_denies_total{reason="ACTION_NOT_ALLOWED"}
+autopilot_policy_denies_total{reason="time_window_denied"}
+autopilot_policy_denies_total{reason="action_rate_limited"}
+autopilot_policy_denies_total{reason="global_rate_limited"}
+autopilot_policy_denies_total{reason="duplicate_action"}
 ```
 
 ## Best Practices
